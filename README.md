@@ -13,7 +13,7 @@ The `~/setup/rootrc` file gives an example of a ROOT environment setup script.
 The user should modify this as needed to point at their own installations and 
 output directory locations.  This file should be saved as `.rootrc` in their 
 working analysis directory; this is loaded automatically when calling the 
-`analyzer' or `root'.
+`analyzer` or `root`.
 
 # Analysis Code 
 
