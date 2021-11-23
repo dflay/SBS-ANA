@@ -83,6 +83,9 @@ int bcmCheck(){
 
    double timeMax = 150;  
 
+   TString leftClkVar = Form("Left.104kHz_CLK.cnt/Left.104kHz_CLK.rate");
+   TString sbsClkVar  = Form("sbs.BBCalHi.RF.scaler/sbs.BBCalHi.RF.scalerRate");
+
    TString histoStr,varStr; 
    for(int i=0;i<N;i++){
       // LHRS
@@ -96,7 +99,7 @@ int bcmCheck(){
       TSLeft->Project(histoStr,varStr,"","");
       // rate vs time  
       histoStr = Form("h%dvt(%d,0,%.0lf,%d,%.0lf,%.0lf)",i+1,NBin,timeMax,NBin,loBeamOff[i],hiBeamOff[i]); 
-      varStr   = Form("%s:Left.104kHz_CLK.cnt/Left.104kHz_CLK.rate",leftVarRate[i].Data()); 
+      varStr   = Form("%s:%s",leftVarRate[i].Data(),leftClkVar.Data()); 
       TSLeft->Project(histoStr,varStr,"","");
       // SBS
       // rates
@@ -109,7 +112,7 @@ int bcmCheck(){
       TSsbs->Project(histoStr,varStr,"","");
       // rate vs time  
       histoStr = Form("g%dvt(%d,0,%.01lf,%d,%.0lf,%.0lf)",i+1,NBin,timeMax,NBin,loBeamOff[i],hiBeamOff[i]); 
-      varStr   = Form("%s:sbs.104kHz_CLK.cnt/sbs.104kHz_CLK.rate",sbsVarRate[i].Data()); 
+      varStr   = Form("%s:%s",sbsVarRate[i].Data(),sbsClkVar.Data()); 
       TSsbs->Project(histoStr,varStr,"","");
    }
 
@@ -211,6 +214,27 @@ int bcmCheck(){
       if(sameCanvas) hvt[i+4]->Draw("same");
       if(sameCanvas) L->Draw("same");
       c2b->Update();
+   }
+
+   // test 60 Hz and 125 MHz clocks 
+   // 60 Hz (last channel, "225". I think it's actually 223.) 
+   TSsbs->Project("g60(100,0,100)"          ,"sbs.7_1.scalerRate","","");
+   // 125 Hz (absolute channel 176, 208)  
+   TSsbs->Project("g125a(100,124.8E+6,125.5E+6)","sbs.5_16.125MHz_CLK.rate","","");
+   TSsbs->Project("g125b(100,124.8E+6,125.5E+6)","sbs.6_16.125MHz_CLK.rate","","");
+
+   TH1F **gclk = new TH1F*[3]; 
+   gclk[0] = (TH1F *)gDirectory->Get("g60"  ); 
+   gclk[1] = (TH1F *)gDirectory->Get("g125a"); 
+   gclk[2] = (TH1F *)gDirectory->Get("g125b"); 
+
+   TCanvas *c3 = new TCanvas("c3","Additional clocks",1200,500);
+   c3->Divide(3,1); 
+
+   for(int i=0;i<3;i++){
+      c3->cd(i+1);
+      gclk[i]->Draw(); 
+      c3->Update(); 
    }
 
    return 0;
