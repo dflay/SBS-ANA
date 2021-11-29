@@ -159,13 +159,13 @@ int BCMPlotter::SetBranchAddresses(){
    fTreeSBS->SetBranchAddress(fSBSVarTime_den     ,&ftime_sbs_den);
    // EPICS 
    if(fEnableEPICS){
-      fTreeEPICS->SetBranchAddress("E.hac_bcm_average",&fhac_bcm_average);
-      fTreeEPICS->SetBranchAddress("E.IPM1H04A.XPOS"  ,&fIPM1H04A_XPOS  );
-      fTreeEPICS->SetBranchAddress("E.IPM1H04A.YPOS"  ,&fIPM1H04A_YPOS  );
-      fTreeEPICS->SetBranchAddress("E.IPM1H04E.XPOS"  ,&fIPM1H04E_XPOS  );
-      fTreeEPICS->SetBranchAddress("E.IPM1H04E.YPOS"  ,&fIPM1H04E_YPOS  );
-      fTreeEPICS->SetBranchAddress("E.IBC1H04CRCUR2"  ,&fIBC1H04CRCUR2  );
-      fTreeEPICS->SetBranchAddress("E.timestamp"      ,&fEPICSTime      );
+      fTreeEPICS->SetBranchAddress("hac_bcm_average",&fhac_bcm_average);
+      fTreeEPICS->SetBranchAddress("IPM1H04A.XPOS"  ,&fIPM1H04A_XPOS  );
+      fTreeEPICS->SetBranchAddress("IPM1H04A.YPOS"  ,&fIPM1H04A_YPOS  );
+      fTreeEPICS->SetBranchAddress("IPM1H04E.XPOS"  ,&fIPM1H04E_XPOS  );
+      fTreeEPICS->SetBranchAddress("IPM1H04E.YPOS"  ,&fIPM1H04E_YPOS  );
+      fTreeEPICS->SetBranchAddress("IBC1H04CRCUR2"  ,&fIBC1H04CRCUR2  );
+      fTreeEPICS->SetBranchAddress("timestamp"      ,&fEPICSTime      );
    }
    return 0;
 }
@@ -270,8 +270,8 @@ TGraph * BCMPlotter::GetTGraph(const char *arm,const char *xAxis,const char *yAx
    std::string ARM = arm; 
    TString xAxisName = Form("%s",xAxis);
    TString yAxisName;
-   if(ARM.compare("EPICS")==0){
-      yAxisName = Form("E.%s",yAxis); 
+   if(ARM.compare("E")==0){
+      yAxisName = Form("%s",yAxis); 
    }else{
       yAxisName = Form("%s.bcm.%s.%s",arm,yAxis,type);
    }
@@ -295,67 +295,59 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
 
    if(fIsDebug) std::cout << "arm = " << arm << ", var = " << var << std::endl;
 
-   double val_left=0,val_sbs=0;
-
    double val=0,time=0;
    for(int i=0;i<fNEntries;i++){
       if(armName.compare("Left")==0){
          fTreeLeft->GetEntry(i);
-	 time = 0;
 	 if(ftime_left_den!=0) time = ftime_left_num/ftime_left_den;
-         if(varName.compare("time")==0){
-	    val = time;
-         }else{
-            if(varName.compare("Left.bcm.u1.cnt")==0     ) val = fu1c_left;
-            if(varName.compare("Left.bcm.unew.cnt")==0   ) val = funewc_left;
-            if(varName.compare("Left.bcm.d1.cnt")==0     ) val = fd1c_left;
-            if(varName.compare("Left.bcm.d3.cnt")==0     ) val = fd3c_left;
-            if(varName.compare("Left.bcm.d10.cnt")==0    ) val = fd10c_left;
-            if(varName.compare("Left.bcm.dnew.cnt")==0   ) val = fdnewc_left;
-            if(varName.compare("Left.bcm.unser.cnt")==0  ) val = funserc_left;
-	    if(varName.compare("Left.bcm.u1.rate")==0    ) val = fu1r_left;
-            if(varName.compare("Left.bcm.unew.rate")==0  ) val = funewr_left;
-            if(varName.compare("Left.bcm.d1.rate")==0    ) val = fd1r_left;
-            if(varName.compare("Left.bcm.d3.rate")==0    ) val = fd3r_left;
-            if(varName.compare("Left.bcm.d10.rate")==0   ) val = fd10r_left;
-            if(varName.compare("Left.bcm.dnew.rate")==0  ) val = fdnewr_left;
-            if(varName.compare("Left.bcm.unser.rate")==0 ) val = funserr_left;
-         }
+	 if(varName.compare("time")==0) val = time;
+	 if(varName.compare("Left.bcm.u1.cnt")==0     ) val = fu1c_left;
+	 if(varName.compare("Left.bcm.unew.cnt")==0   ) val = funewc_left;
+	 if(varName.compare("Left.bcm.d1.cnt")==0     ) val = fd1c_left;
+	 if(varName.compare("Left.bcm.d3.cnt")==0     ) val = fd3c_left;
+	 if(varName.compare("Left.bcm.d10.cnt")==0    ) val = fd10c_left;
+	 if(varName.compare("Left.bcm.dnew.cnt")==0   ) val = fdnewc_left;
+	 if(varName.compare("Left.bcm.unser.cnt")==0  ) val = funserc_left;
+	 if(varName.compare("Left.bcm.u1.rate")==0    ) val = fu1r_left;
+	 if(varName.compare("Left.bcm.unew.rate")==0  ) val = funewr_left;
+	 if(varName.compare("Left.bcm.d1.rate")==0    ) val = fd1r_left;
+	 if(varName.compare("Left.bcm.d3.rate")==0    ) val = fd3r_left;
+	 if(varName.compare("Left.bcm.d10.rate")==0   ) val = fd10r_left;
+	 if(varName.compare("Left.bcm.dnew.rate")==0  ) val = fdnewr_left;
+	 if(varName.compare("Left.bcm.unser.rate")==0 ) val = funserr_left;
       }else if(armName.compare("sbs")==0){
          fTreeSBS->GetEntry(i);
 	 if(ftime_sbs_den!=0) time = ftime_sbs_num/ftime_sbs_den;
-         if(varName.compare("time")==0){
-	    val = time;
-         }else{
-            if(varName.compare("sbs.bcm.u1.cnt")==0     ) val = fu1c_sbs;
-            if(varName.compare("sbs.bcm.unew.cnt")==0   ) val = funewc_sbs;
-            if(varName.compare("sbs.bcm.d1.cnt")==0     ) val = fd1c_sbs;
-            if(varName.compare("sbs.bcm.d3.cnt")==0     ) val = fd3c_sbs;
-            if(varName.compare("sbs.bcm.d10.cnt")==0    ) val = fd10c_sbs;
-            if(varName.compare("sbs.bcm.dnew.cnt")==0   ) val = fdnewc_sbs;
-            if(varName.compare("sbs.bcm.unser.cnt")==0  ) val = funserc_sbs;
-	    if(varName.compare("sbs.bcm.u1.rate")==0    ) val = fu1r_sbs;
-            if(varName.compare("sbs.bcm.unew.rate")==0  ) val = funewr_sbs;
-            if(varName.compare("sbs.bcm.d1.rate")==0    ) val = fd1r_sbs;
-            if(varName.compare("sbs.bcm.d3.rate")==0    ) val = fd3r_sbs;
-            if(varName.compare("sbs.bcm.d10.rate")==0   ) val = fd10r_sbs;
-            if(varName.compare("sbs.bcm.dnew.rate")==0  ) val = fdnewr_sbs;
-            if(varName.compare("sbs.bcm.unser.rate")==0 ) val = funserr_sbs;
-         }
+	 if(varName.compare("time")==0) val = time;
+	 if(varName.compare("sbs.bcm.u1.cnt")==0     ) val = fu1c_sbs;
+	 if(varName.compare("sbs.bcm.unew.cnt")==0   ) val = funewc_sbs;
+	 if(varName.compare("sbs.bcm.d1.cnt")==0     ) val = fd1c_sbs;
+	 if(varName.compare("sbs.bcm.d3.cnt")==0     ) val = fd3c_sbs;
+	 if(varName.compare("sbs.bcm.d10.cnt")==0    ) val = fd10c_sbs;
+	 if(varName.compare("sbs.bcm.dnew.cnt")==0   ) val = fdnewc_sbs;
+	 if(varName.compare("sbs.bcm.unser.cnt")==0  ) val = funserc_sbs;
+	 if(varName.compare("sbs.bcm.u1.rate")==0    ) val = fu1r_sbs;
+	 if(varName.compare("sbs.bcm.unew.rate")==0  ) val = funewr_sbs;
+	 if(varName.compare("sbs.bcm.d1.rate")==0    ) val = fd1r_sbs;
+	 if(varName.compare("sbs.bcm.d3.rate")==0    ) val = fd3r_sbs;
+	 if(varName.compare("sbs.bcm.d10.rate")==0   ) val = fd10r_sbs;
+	 if(varName.compare("sbs.bcm.dnew.rate")==0  ) val = fdnewr_sbs;
+	 if(varName.compare("sbs.bcm.unser.rate")==0 ) val = funserr_sbs;
 	 // std::cout << Form("%d val = %.3lf, u1r = %.3lf, d1r = %.3lf",i,val,fu1r_sbs,fd1r_sbs) << std::endl;
-      }else if(armName.compare("EPICS")==0){
+      }else if(armName.compare("E")==0){
 	 fTreeEPICS->GetEntry(i); 
-	 if(varName.compare("time")==0)              val = fEPICSTime; 
-	 if(varName.compare("E.IPM1H04A.XPOS")==0)   val = fIPM1H04A_XPOS; 
-	 if(varName.compare("E.IPM1H04A.YPOS")==0)   val = fIPM1H04A_YPOS; 
-	 if(varName.compare("E.IPM1H04E.XPOS")==0)   val = fIPM1H04E_XPOS; 
-	 if(varName.compare("E.IPM1H04E.YPOS")==0)   val = fIPM1H04E_YPOS; 
-	 if(varName.compare("E.hac_bcm_average")==0) val = fhac_bcm_average; 
-	 if(varName.compare("E.IBC1H04CRCUR2")==0)   val = fIBC1H04CRCUR2; 
+	 if(varName.compare("time")==0)            val = fEPICSTime; 
+	 if(varName.compare("IPM1H04A.XPOS")==0)   val = fIPM1H04A_XPOS; 
+	 if(varName.compare("IPM1H04A.YPOS")==0)   val = fIPM1H04A_YPOS; 
+	 if(varName.compare("IPM1H04E.XPOS")==0)   val = fIPM1H04E_XPOS; 
+	 if(varName.compare("IPM1H04E.YPOS")==0)   val = fIPM1H04E_YPOS; 
+	 if(varName.compare("hac_bcm_average")==0) val = fhac_bcm_average; 
+	 if(varName.compare("IBC1H04CRCUR2")==0)   val = fIBC1H04CRCUR2; 
       }
       if(fIsDebug) std::cout << Form("%d time = %.3lf, u1r = %.3lf, d1r = %.3lf",i,time,fu1r_sbs,fd1r_sbs) << std::endl;
       v.push_back(val);
       val = 0;
+      time = 0;
    }
    return 0;
 }

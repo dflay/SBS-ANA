@@ -31,6 +31,7 @@ int bcmPlot(){
    
    BCMPlotter *myPlotter = new BCMPlotter();
    myPlotter->SetDebug();
+   // myPlotter->EnableEPICS(); 
 
    TString filePath;  
    int startSegment = 0; 
@@ -107,7 +108,7 @@ int bcmPlot(){
       g[i] = myPlotter->GetTGraph("sbs","time",varName[i],"rate");
    }
 
-   // TGraph *gEPICSCurrent = myPlotter->GetTGraph("EPICS","time","IBC1H04CRCUR2",""); 
+   // TGraph *gEPICSCurrent = myPlotter->GetTGraph("E","time","IBC1H04CRCUR2",""); 
    // gEPICSCurrent->SetMarkerStyle(20);
 
    // TCanvas *c3 = new TCanvas("c3","EPICS Beam Current",1200,800); 
