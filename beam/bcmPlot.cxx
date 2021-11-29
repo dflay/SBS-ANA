@@ -30,6 +30,7 @@ int bcmPlot(){
    if(rc!=0) return 1; 
    
    BCMPlotter *myPlotter = new BCMPlotter();
+   myPlotter->SetDebug();
 
    TString filePath;  
    int startSegment = 0; 
@@ -105,6 +106,19 @@ int bcmPlot(){
       h[i]->GetYaxis()->CenterTitle(); 
       g[i] = myPlotter->GetTGraph("sbs","time",varName[i],"rate");
    }
+
+   // TGraph *gEPICSCurrent = myPlotter->GetTGraph("EPICS","time","IBC1H04CRCUR2",""); 
+   // gEPICSCurrent->SetMarkerStyle(20);
+
+   // TCanvas *c3 = new TCanvas("c3","EPICS Beam Current",1200,800); 
+
+   // c3->cd();
+   // gEPICSCurrent->Draw("alp");
+   // gEPICSCurrent->GetXaxis()->SetTitle("Time");  
+   // gEPICSCurrent->GetXaxis()->CenterTitle();  
+   // gEPICSCurrent->GetYaxis()->SetTitle("IBC1H04CRCUR2");  
+   // gEPICSCurrent->GetYaxis()->CenterTitle();  
+   // c3->Update();  
 
    // TCanvas *c1a = new TCanvas("c1a","BCM Check: LHRS and SBS",1200,800);
    // c1a->Divide(2,2);

@@ -1,16 +1,20 @@
 #include "../include/BCMPlotter.h"
 //______________________________________________________________________________
-BCMPlotter::BCMPlotter(const char *filePath){
-   fIsDebug   = false; 
-   fTreeLeft  = nullptr; 
-   fTreeSBS   = nullptr;
-   fChainLeft = nullptr; 
-   fChainSBS  = nullptr; 
-   fNEntries  = 0; 
+BCMPlotter::BCMPlotter(const char *filePath,bool isDebug,bool enableEPICS){
+   fIsDebug     = isDebug;
+   fEnableEPICS = enableEPICS;  
+   fTreeLeft    = nullptr; 
+   fTreeSBS     = nullptr;
+   fTreeEPICS   = nullptr;
+   fChainLeft   = nullptr; 
+   fChainSBS    = nullptr; 
+   fChainEPICS  = nullptr; 
+   fNEntries    = 0; 
 
    // set up chains 
-   fChainLeft = new TChain("TSLeft"); 
-   fChainSBS  = new TChain("TSsbs"); 
+   fChainLeft  = new TChain("TSLeft"); 
+   fChainSBS   = new TChain("TSsbs"); 
+   fChainEPICS = new TChain("E"); 
 
    std::string theFilePath = filePath;
    if(theFilePath.compare("NONE")!=0){
@@ -50,15 +54,23 @@ BCMPlotter::BCMPlotter(const char *filePath){
    fd10r_sbs=0;     fd10c_sbs=0;
    fdnewr_sbs=0;    fdnewc_sbs=0;
    funserr_sbs=0;   funserc_sbs=0;
-   ftime_sbs_num=0; ftime_sbs_den=0; 
+   ftime_sbs_num=0; ftime_sbs_den=0;
+
+   fEPICSTime=0; 
+   fhac_bcm_average=0;
+   fIBC1H04CRCUR2=0; 
+   fIPM1H04A_XPOS=0;  fIPM1H04A_YPOS=0;  
+   fIPM1H04E_XPOS=0;  fIPM1H04E_YPOS=0;  
 
 }
 //______________________________________________________________________________
 BCMPlotter::~BCMPlotter(){
    delete fTreeLeft;
    delete fTreeSBS;
+   delete fTreeEPICS;
    delete fChainLeft; 
    delete fChainSBS;
+   delete fChainEPICS;
    fVarName.clear();
 }
 //______________________________________________________________________________
@@ -77,11 +89,12 @@ void BCMPlotter::SetTimeVariable(const char *arm,const char *var){
 //______________________________________________________________________________
 void BCMPlotter::LoadFile(const char *filePath){
    // Attach trees for LHRS and SBS 
-   TString treePath_LHRS = Form("%s/TSLeft",filePath);
-   TString treePath_SBS  = Form("%s/TSsbs" ,filePath);
+   TString treePath_LHRS  = Form("%s/TSLeft",filePath);
+   TString treePath_SBS   = Form("%s/TSsbs" ,filePath);
+   TString treePath_EPICS = Form("%s/E"     ,filePath);
 
    if(fIsDebug){
-      std::cout << "Loading trees TSLeft and TSsbs from file: " << filePath << std::endl;
+      std::cout << "Loading trees TSLeft, TSsbs, and E from file: " << filePath << std::endl;
    }
 
    fChainLeft->Add(treePath_LHRS);
@@ -92,7 +105,18 @@ void BCMPlotter::LoadFile(const char *filePath){
    fNEntries = fChainSBS->GetEntries();
    fTreeSBS  = fChainSBS->GetTree();
 
-   if(fIsDebug) std::cout << "NEntries = " << fNEntries << ", Tree addresses: TSLeft = " << fTreeLeft << " TSsbs = " << fTreeSBS << std::endl;
+   if(fEnableEPICS){
+      fChainEPICS->Add(treePath_EPICS);
+      fNEntries  = fChainEPICS->GetEntries();
+      fTreeEPICS = fChainEPICS->GetTree();
+   }
+
+   if(fIsDebug){
+      std::cout << "NEntries = " << fNEntries 
+                << ", Tree addresses: TSLeft = " << fTreeLeft 
+                << " TSsbs = " << fTreeSBS 
+                << " E = " << fTreeEPICS << std::endl;
+   }
 
    // now set branch addresses so we can fill vectors, histos, etc 
    SetBranchAddresses();  
@@ -133,6 +157,16 @@ int BCMPlotter::SetBranchAddresses(){
    fTreeSBS->SetBranchAddress("sbs.bcm.unser.rate",&funserr_sbs);
    fTreeSBS->SetBranchAddress(fSBSVarTime_num     ,&ftime_sbs_num);
    fTreeSBS->SetBranchAddress(fSBSVarTime_den     ,&ftime_sbs_den);
+   // EPICS 
+   if(fEnableEPICS){
+      fTreeEPICS->SetBranchAddress("E.hac_bcm_average",&fhac_bcm_average);
+      fTreeEPICS->SetBranchAddress("E.IPM1H04A.XPOS"  ,&fIPM1H04A_XPOS  );
+      fTreeEPICS->SetBranchAddress("E.IPM1H04A.YPOS"  ,&fIPM1H04A_YPOS  );
+      fTreeEPICS->SetBranchAddress("E.IPM1H04E.XPOS"  ,&fIPM1H04E_XPOS  );
+      fTreeEPICS->SetBranchAddress("E.IPM1H04E.YPOS"  ,&fIPM1H04E_YPOS  );
+      fTreeEPICS->SetBranchAddress("E.IBC1H04CRCUR2"  ,&fIBC1H04CRCUR2  );
+      fTreeEPICS->SetBranchAddress("E.timestamp"      ,&fEPICSTime      );
+   }
    return 0;
 }
 //______________________________________________________________________________
@@ -233,8 +267,14 @@ int BCMPlotter::CheckVariable(const char *arm,const char *var){
 //______________________________________________________________________________
 TGraph * BCMPlotter::GetTGraph(const char *arm,const char *xAxis,const char *yAxis,const char *type){
    // get a TGraph object 
+   std::string ARM = arm; 
    TString xAxisName = Form("%s",xAxis);
-   TString yAxisName = Form("%s.bcm.%s.%s",arm,yAxis,type);
+   TString yAxisName;
+   if(ARM.compare("EPICS")==0){
+      yAxisName = Form("E.%s",yAxis); 
+   }else{
+      yAxisName = Form("%s.bcm.%s.%s",arm,yAxis,type);
+   }
 
    if(fIsDebug) std::cout << xAxisName << " " << yAxisName << std::endl;
 
@@ -257,12 +297,14 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
 
    double val_left=0,val_sbs=0;
 
-   double val=0;
+   double val=0,time=0;
    for(int i=0;i<fNEntries;i++){
       if(armName.compare("Left")==0){
          fTreeLeft->GetEntry(i);
+	 time = 0;
+	 if(ftime_left_den!=0) time = ftime_left_num/ftime_left_den;
          if(varName.compare("time")==0){
-            if(ftime_left_den!=0) val = ftime_left_num/ftime_left_den;
+	    val = time;
          }else{
             if(varName.compare("Left.bcm.u1.cnt")==0     ) val = fu1c_left;
             if(varName.compare("Left.bcm.unew.cnt")==0   ) val = funewc_left;
@@ -281,8 +323,9 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
          }
       }else if(armName.compare("sbs")==0){
          fTreeSBS->GetEntry(i);
+	 if(ftime_sbs_den!=0) time = ftime_sbs_num/ftime_sbs_den;
          if(varName.compare("time")==0){
-            if(ftime_sbs_den!=0) val = ftime_sbs_num/ftime_sbs_den;
+	    val = time;
          }else{
             if(varName.compare("sbs.bcm.u1.cnt")==0     ) val = fu1c_sbs;
             if(varName.compare("sbs.bcm.unew.cnt")==0   ) val = funewc_sbs;
@@ -300,8 +343,17 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
             if(varName.compare("sbs.bcm.unser.rate")==0 ) val = funserr_sbs;
          }
 	 // std::cout << Form("%d val = %.3lf, u1r = %.3lf, d1r = %.3lf",i,val,fu1r_sbs,fd1r_sbs) << std::endl;
+      }else if(armName.compare("EPICS")==0){
+	 fTreeEPICS->GetEntry(i); 
+	 if(varName.compare("time")==0)              val = fEPICSTime; 
+	 if(varName.compare("E.IPM1H04A.XPOS")==0)   val = fIPM1H04A_XPOS; 
+	 if(varName.compare("E.IPM1H04A.YPOS")==0)   val = fIPM1H04A_YPOS; 
+	 if(varName.compare("E.IPM1H04E.XPOS")==0)   val = fIPM1H04E_XPOS; 
+	 if(varName.compare("E.IPM1H04E.YPOS")==0)   val = fIPM1H04E_YPOS; 
+	 if(varName.compare("E.hac_bcm_average")==0) val = fhac_bcm_average; 
+	 if(varName.compare("E.IBC1H04CRCUR2")==0)   val = fIBC1H04CRCUR2; 
       }
-      if(fIsDebug) std::cout << Form("%d u1r = %.3lf, d1r = %.3lf",i,fu1r_sbs,fd1r_sbs) << std::endl;
+      if(fIsDebug) std::cout << Form("%d time = %.3lf, u1r = %.3lf, d1r = %.3lf",i,time,fu1r_sbs,fd1r_sbs) << std::endl;
       v.push_back(val);
       val = 0;
    }

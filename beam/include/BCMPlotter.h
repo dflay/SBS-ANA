@@ -21,10 +21,10 @@ class BCMPlotter {
 
    private:
       int fNEntries; 
-      bool fIsDebug;
+      bool fIsDebug,fEnableEPICS;
       std::vector<std::string> fVarName;   
-      TTree *fTreeLeft,*fTreeSBS;
-      TChain *fChainLeft,*fChainSBS;
+      TTree *fTreeLeft,*fTreeSBS,*fTreeEPICS;
+      TChain *fChainLeft,*fChainSBS,*fChainEPICS;
       TString fLeftVarTime_num,fLeftVarTime_den;
       TString fSBSVarTime_num,fSBSVarTime_den;
 
@@ -46,14 +46,21 @@ class BCMPlotter {
       double funserr_sbs,funserc_sbs;
       double ftime_sbs_num,ftime_sbs_den;
 
+      double fEPICSTime; 
+      double fhac_bcm_average;
+      double fIBC1H04CRCUR2;
+      double fIPM1H04A_XPOS,fIPM1H04A_YPOS;
+      double fIPM1H04E_XPOS,fIPM1H04E_YPOS;
+
       int CheckVariable(const char *arm,const char *var);
       int SetBranchAddresses(); 
 
    public: 
-      BCMPlotter(const char *filePath="NONE");
+      BCMPlotter(const char *filePath="NONE",bool isDebug=false,bool enableEPICS=false);
       ~BCMPlotter(); 
 
-      void SetDebug(bool v=true)  { fIsDebug = v; } 
+      void SetDebug(bool v=true)     { fIsDebug     = v; } 
+      void EnableEPICS(bool v=true)  { fEnableEPICS = v; } 
       void LoadFile(const char *filePath);
       void SetTimeVariable(const char *arm,const char *var); 
 
