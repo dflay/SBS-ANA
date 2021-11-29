@@ -11,15 +11,8 @@
 #include "TLine.h"
 
 #include "./include/cut.h"
-#include "./src/Math.cxx"
-// #include "./src/CSVManager.cxx"
 #include "./src/BCMPlotter.cxx"
 #include "./src/bcmUtilities.cxx"
-
-int LoadCuts(const char *inpath,std::vector<cut_t> &data); 
-
-void GetStatsWithCuts(std::vector<double> x,std::vector<double> y,
-                      double cutLo,double cutHi,double &mean,double &stdev); 
 
 int bcmPlot(){
 
@@ -28,22 +21,28 @@ int bcmPlot(){
    bool sameCanvas = true;
    
    gStyle->SetOptStat(0);
-   
-   int run;
-   std::cout << "Enter run number: ";
-   std::cin  >> run;
+ 
+   int rc=0;
 
+   TString prefix; 
+   std::vector<int> runList;
+   rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList);
+   if(rc!=0) return 1; 
+   
+   BCMPlotter *myPlotter = new BCMPlotter();
+
+   TString filePath;  
    int startSegment = 0; 
    int endSegment   = 0; 
-
-   TString prefix   = Form("/lustre19/expphy/volatile/halla/sbs/flay/GMnAnalysis/rootfiles");
-   TString filePath = Form("%s/gmn_replayed-beam_%d_stream0_seg%d_%d.root",prefix.Data(),run,startSegment,endSegment);
-
-   BCMPlotter *myPlotter = new BCMPlotter();
-   myPlotter->LoadFile(filePath); 
+   const int NR = runList.size();  
+   for(int i=0;i<NR;i++){ 
+      filePath = Form("%s/gmn_replayed-beam_%d_stream0_seg%d_%d.root",prefix.Data(),runList[i],startSegment,endSegment);
+      myPlotter->LoadFile(filePath);
+   } 
 
    std::vector<cut_t> cutList; 
-   int rc = bcm_util::LoadCuts("./input/cut-list.csv",cutList); 
+   rc = bcm_util::LoadCuts("./input/cut-list.csv",cutList); 
+   if(rc!=0) return 1; 
 
    const int N = 7; 
    TString varName[N] = {"u1","unew","unser","dnew","d1","d3","d10"};
@@ -53,12 +52,13 @@ int bcmPlot(){
    double loBeamOff[N] = {50  ,0  ,700E+3,0    ,1E+3  ,0  ,0  };
    double hiBeamOff[N] = {150,100 ,850E+3,20E+3,1.5E+3,100,100};
 
-   double timeMin = 0; 
-   double timeMax = 150; 
-
    // test getting a vector of data 
    std::vector<double> time; 
    myPlotter->GetVector("sbs","time",time); 
+
+   const int NT = time.size();
+   double timeMin = time[0];
+   double timeMax = time[NT-1]; 
    
    TString theVar; 
    double mean=0,stdev=0;
@@ -74,13 +74,14 @@ int bcmPlot(){
       // define variable and get a vector of all data  
       theVar = Form("sbs.bcm.%s.rate",cutList[i].dev.c_str());
       myPlotter->GetVector("sbs",theVar.Data(),v); 
-      GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
-      std::cout << Form("[Cuts Applied] %s mean = %.3lf, stdev = %.3lf",theVar.Data(),mean,stdev) << std::endl; 
+      bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
+      std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
+                        cutList[i].low,cutList[i].high,cutList[i].group,theVar.Data(),mean,stdev) << std::endl; 
       // make lines we can plot 
       lo[i] = new TLine(cutList[i].low ,mean-5*stdev,cutList[i].low ,mean+5*stdev);
       lo[i]->SetLineColor(kRed); 
       hi[i] = new TLine(cutList[i].high,mean-5*stdev,cutList[i].high,mean+5*stdev);
-      hi[i]->SetLineColor(kRed); 
+      hi[i]->SetLineColor(kRed);
       // set up for next cut 
       v.clear();
    }
@@ -173,18 +174,4 @@ int bcmPlot(){
    c2b->Update();
 
    return 0;
-}
-//______________________________________________________________________________
-void GetStatsWithCuts(std::vector<double> x,std::vector<double> y,
-                      double cutLo,double cutHi,double &mean,double &stdev){
-   // cuts are applied to the x variable. if true, compute stats on y 
-   std::vector<double> Y; 
-   const int N = x.size(); 
-
-   for(int i=0;i<N;i++){
-      if(x[i]>cutLo&&x[i]<cutHi) Y.push_back(y[i]); 
-   }  
-
-   mean  = math_df::GetMean<double>(Y);
-   stdev = math_df::GetStandardDeviation<double>(Y);  
 }
