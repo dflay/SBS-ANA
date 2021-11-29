@@ -1,10 +1,16 @@
 #include "../include/BCMPlotter.h"
 //______________________________________________________________________________
 BCMPlotter::BCMPlotter(const char *filePath){
-   fIsDebug  = false; 
-   fTreeLeft = nullptr; 
-   fTreeSBS  = nullptr;
-   fNEntries = 0; 
+   fIsDebug   = false; 
+   fTreeLeft  = nullptr; 
+   fTreeSBS   = nullptr;
+   fChainLeft = nullptr; 
+   fChainSBS  = nullptr; 
+   fNEntries  = 0; 
+
+   // set up chains 
+   fChainLeft = new TChain("TSLeft"); 
+   fChainSBS  = new TChain("TSsbs"); 
 
    std::string theFilePath = filePath;
    if(theFilePath.compare("NONE")!=0){
@@ -51,6 +57,8 @@ BCMPlotter::BCMPlotter(const char *filePath){
 BCMPlotter::~BCMPlotter(){
    delete fTreeLeft;
    delete fTreeSBS;
+   delete fChainLeft; 
+   delete fChainSBS;
    fVarName.clear();
 }
 //______________________________________________________________________________
@@ -63,6 +71,8 @@ void BCMPlotter::SetTimeVariable(const char *arm,const char *var){
       fSBSVarTime_num = Form("sbs.%s.scaler"    ,var);
       fSBSVarTime_den = Form("sbs.%s.scalerRate",var);
    }
+   // reset branch addresses 
+   SetBranchAddresses(); 
 }
 //______________________________________________________________________________
 void BCMPlotter::LoadFile(const char *filePath){
@@ -74,15 +84,13 @@ void BCMPlotter::LoadFile(const char *filePath){
       std::cout << "Loading trees TSLeft and TSsbs from file: " << filePath << std::endl;
    }
 
-   TChain *chL = new TChain("TSLeft");
-   chL->Add(treePath_LHRS);
-   fNEntries = chL->GetEntries();
-   fTreeLeft = chL->GetTree();
+   fChainLeft->Add(treePath_LHRS);
+   fNEntries = fChainLeft->GetEntries();
+   fTreeLeft = fChainLeft->GetTree();
 
-   TChain *chS = new TChain("TSsbs");
-   chS->Add(treePath_SBS);
-   fNEntries = chS->GetEntries();
-   fTreeSBS = chS->GetTree();
+   fChainSBS->Add(treePath_SBS);
+   fNEntries = fChainSBS->GetEntries();
+   fTreeSBS  = fChainSBS->GetTree();
 
    if(fIsDebug) std::cout << "NEntries = " << fNEntries << ", Tree addresses: TSLeft = " << fTreeLeft << " TSsbs = " << fTreeSBS << std::endl;
 
@@ -91,7 +99,7 @@ void BCMPlotter::LoadFile(const char *filePath){
 }
 //______________________________________________________________________________
 int BCMPlotter::SetBranchAddresses(){
-
+   // LHRS arm
    fTreeLeft->SetBranchAddress("Left.bcm.u1.cnt"    ,&fu1c_left   );
    fTreeLeft->SetBranchAddress("Left.bcm.u1.rate"   ,&fu1r_left   );
    fTreeLeft->SetBranchAddress("Left.bcm.unew.cnt"  ,&funewc_left );
@@ -108,7 +116,7 @@ int BCMPlotter::SetBranchAddresses(){
    fTreeLeft->SetBranchAddress("Left.bcm.unser.rate",&funserr_left);
    fTreeLeft->SetBranchAddress(fLeftVarTime_num     ,&ftime_left_num);
    fTreeLeft->SetBranchAddress(fLeftVarTime_den     ,&ftime_left_den);
-
+   // SBS arm
    fTreeSBS->SetBranchAddress("sbs.bcm.u1.cnt"    ,&fu1c_sbs   );
    fTreeSBS->SetBranchAddress("sbs.bcm.u1.rate"   ,&fu1r_sbs   );
    fTreeSBS->SetBranchAddress("sbs.bcm.unew.cnt"  ,&funewc_sbs );
@@ -125,7 +133,6 @@ int BCMPlotter::SetBranchAddresses(){
    fTreeSBS->SetBranchAddress("sbs.bcm.unser.rate",&funserr_sbs);
    fTreeSBS->SetBranchAddress(fSBSVarTime_num     ,&ftime_sbs_num);
    fTreeSBS->SetBranchAddress(fSBSVarTime_den     ,&ftime_sbs_den);
-
    return 0;
 }
 //______________________________________________________________________________
@@ -239,7 +246,6 @@ TGraph * BCMPlotter::GetTGraph(const char *arm,const char *xAxis,const char *yAx
    TGraph *g = new TGraph(N,&x[0],&y[0]); 
    return g; 
 }
-
 //______________________________________________________________________________
 int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v){
    // fill a vector with the variable 

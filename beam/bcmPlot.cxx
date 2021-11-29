@@ -8,8 +8,18 @@
 #include "TH1F.h"
 #include "TStyle.h"
 #include "TPad.h"
+#include "TLine.h"
 
+#include "./include/cut.h"
+#include "./src/Math.cxx"
+// #include "./src/CSVManager.cxx"
 #include "./src/BCMPlotter.cxx"
+#include "./src/bcmUtilities.cxx"
+
+int LoadCuts(const char *inpath,std::vector<cut_t> &data); 
+
+void GetStatsWithCuts(std::vector<double> x,std::vector<double> y,
+                      double cutLo,double cutHi,double &mean,double &stdev); 
 
 int bcmPlot(){
 
@@ -32,6 +42,9 @@ int bcmPlot(){
    BCMPlotter *myPlotter = new BCMPlotter();
    myPlotter->LoadFile(filePath); 
 
+   std::vector<cut_t> cutList; 
+   int rc = bcm_util::LoadCuts("./input/cut-list.csv",cutList); 
+
    const int N = 7; 
    TString varName[N] = {"u1","unew","unser","dnew","d1","d3","d10"};
 
@@ -43,6 +56,37 @@ int bcmPlot(){
    double timeMin = 0; 
    double timeMax = 150; 
 
+   // test getting a vector of data 
+   std::vector<double> time; 
+   myPlotter->GetVector("sbs","time",time); 
+   
+   TString theVar; 
+   double mean=0,stdev=0;
+   double CUT_LO=0,CUT_HI=0;
+   std::vector<double> v; 
+
+   const int NC = cutList.size();
+   TLine **lo = new TLine*[NC]; 
+   TLine **hi = new TLine*[NC]; 
+
+   // let's do cuts on each variable defined 
+   for(int i=0;i<NC;i++){
+      // define variable and get a vector of all data  
+      theVar = Form("sbs.bcm.%s.rate",cutList[i].dev.c_str());
+      myPlotter->GetVector("sbs",theVar.Data(),v); 
+      GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
+      std::cout << Form("[Cuts Applied] %s mean = %.3lf, stdev = %.3lf",theVar.Data(),mean,stdev) << std::endl; 
+      // make lines we can plot 
+      lo[i] = new TLine(cutList[i].low ,mean-5*stdev,cutList[i].low ,mean+5*stdev);
+      lo[i]->SetLineColor(kRed); 
+      hi[i] = new TLine(cutList[i].high,mean-5*stdev,cutList[i].high,mean+5*stdev);
+      hi[i]->SetLineColor(kRed); 
+      // set up for next cut 
+      v.clear();
+   }
+ 
+   // create histos and TGraphs 
+ 
    TString hName,hRange;
 
    TGraph **g = new TGraph*[N]; 
@@ -61,25 +105,25 @@ int bcmPlot(){
       g[i] = myPlotter->GetTGraph("sbs","time",varName[i],"rate");
    }
 
-   TCanvas *c1a = new TCanvas("c1a","BCM Check: LHRS and SBS",1200,800);
-   c1a->Divide(2,2);
+   // TCanvas *c1a = new TCanvas("c1a","BCM Check: LHRS and SBS",1200,800);
+   // c1a->Divide(2,2);
 
-   TCanvas *c1b = new TCanvas("c1b","BCM Check: LHRS and SBS",1200,800);
-   c1b->Divide(2,2);
+   // TCanvas *c1b = new TCanvas("c1b","BCM Check: LHRS and SBS",1200,800);
+   // c1b->Divide(2,2);
 
-   for(int i=0;i<N/2;i++){
-      c1a->cd(i+1);
-      h[i]->Draw();
-      c1a->Update();
-      c1b->cd(i+1);
-      h[i+3]->Draw();
-      c1b->Update();
-   }
+   // for(int i=0;i<N/2;i++){
+   //    c1a->cd(i+1);
+   //    h[i]->Draw();
+   //    c1a->Update();
+   //    c1b->cd(i+1);
+   //    h[i+3]->Draw();
+   //    c1b->Update();
+   // }
 
-   // last one 
-   c1b->cd(4); 
-   h[6]->Draw();
-   c1b->Update();
+   // // last one 
+   // c1b->cd(4); 
+   // h[6]->Draw();
+   // c1b->Update();
 
    TCanvas *c2a = new TCanvas("c2a","BCM Check",1200,800);
    c2a->Divide(2,2);
@@ -97,6 +141,8 @@ int bcmPlot(){
       g[i]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[i].Data())); 
       g[i]->GetYaxis()->CenterTitle(); 
       g[i]->Draw();
+      lo[i]->Draw("same"); 
+      hi[i]->Draw("same");
       c2a->Update();
       c2b->cd(i+1);
       g[i+3]->Draw();
@@ -107,6 +153,8 @@ int bcmPlot(){
       g[i+3]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[i+3].Data())); 
       g[i+3]->GetYaxis()->CenterTitle(); 
       g[i+3]->Draw();
+      lo[i+3]->Draw("same"); 
+      hi[i+3]->Draw("same");
       c2b->Update();
    }
 
@@ -120,7 +168,23 @@ int bcmPlot(){
    g[6]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[6].Data())); 
    g[6]->GetYaxis()->CenterTitle(); 
    g[6]->Draw();
+   lo[6]->Draw("same"); 
+   hi[6]->Draw("same");
    c2b->Update();
 
    return 0;
+}
+//______________________________________________________________________________
+void GetStatsWithCuts(std::vector<double> x,std::vector<double> y,
+                      double cutLo,double cutHi,double &mean,double &stdev){
+   // cuts are applied to the x variable. if true, compute stats on y 
+   std::vector<double> Y; 
+   const int N = x.size(); 
+
+   for(int i=0;i<N;i++){
+      if(x[i]>cutLo&&x[i]<cutHi) Y.push_back(y[i]); 
+   }  
+
+   mean  = math_df::GetMean<double>(Y);
+   stdev = math_df::GetStandardDeviation<double>(Y);  
 }

@@ -24,6 +24,7 @@ class BCMPlotter {
       bool fIsDebug;
       std::vector<std::string> fVarName;   
       TTree *fTreeLeft,*fTreeSBS;
+      TChain *fChainLeft,*fChainSBS;
       TString fLeftVarTime_num,fLeftVarTime_den;
       TString fSBSVarTime_num,fSBSVarTime_den;
 
@@ -43,7 +44,7 @@ class BCMPlotter {
       double fd10r_sbs,fd10c_sbs;
       double fdnewr_sbs,fdnewc_sbs;
       double funserr_sbs,funserc_sbs;
-      double ftime_sbs_num=0,ftime_sbs_den;
+      double ftime_sbs_num,ftime_sbs_den;
 
       int CheckVariable(const char *arm,const char *var);
       int SetBranchAddresses(); 
