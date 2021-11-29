@@ -8,6 +8,8 @@
 #include "./include/producedVariable.h"
 #include "./src/bcmUtilities.cxx"
 
+int PrintToFile(const char *outpath,std::vector<producedVariable_t> data); 
+
 int bcmCalibrate(){
 
    std::vector<std::string> label,path;
@@ -29,30 +31,34 @@ int bcmCalibrate(){
    rc = bcm_util::LoadProducedVariables(on_path.c_str(),on);
    if(rc!=0) return 1; 
 
-   // compute difference for all variables 
+   // compute difference for all variables
+   bool printToScreen = true;
+   std::vector<producedVariable_t> diff;
+   bcm_util::SubtractBaseline(on,off,diff,printToScreen);  
+
+   rc = PrintToFile(out_path.c_str(),diff); 
+
+   return rc;
+}
+//______________________________________________________________________________
+int PrintToFile(const char *outpath,std::vector<producedVariable_t> data){
 
    std::vector<std::string> DEV,BEAM_STATE; 
    std::vector<int> GRP; 
    std::vector<double> MU,SIG; 
 
-   double arg=0,argErr=0; 
-   producedVariable_t x; 
-   std::vector<producedVariable_t> diff; 
-   const int N = off.size();
+   // write results to file
+   const int N = data.size();
    for(int i=0;i<N;i++){
-      arg          = on[i].mean - off[i].mean; 
-      argErr       = TMath::Sqrt( on[i].stdev*on[i].stdev + off[i].stdev*off[i].stdev );
-      MU.push_back(arg); 
-      SIG.push_back(argErr);
-      DEV.push_back(on[i].dev);
-      BEAM_STATE.push_back("DIFF"); 
-      GRP.push_back(on[i].group); 
-      // print 
-      std::cout << Form("%s: on: %.3lf ± %.3lf, off: %.3lf ± %.3lf, on-off: %.3lf ± %.3lf",
-                        on[i].dev.c_str(),on[i].mean,on[i].stdev,off[i].mean,off[i].stdev,arg,argErr) << std::endl; 
+      MU.push_back(data[i].mean); 
+      SIG.push_back(data[i].stdev);
+      DEV.push_back(data[i].dev);
+      BEAM_STATE.push_back(data[i].beam_state); 
+      GRP.push_back(data[i].group); 
    }
 
-   // write results to file
+   std::string header = "dev,beam_state,group,mean,stdev"; 
+
    const int NROW = DEV.size();
    const int NCOL = 5;
    CSVManager *csv = new CSVManager();
@@ -62,9 +68,9 @@ int bcmCalibrate(){
    csv->SetColumn<int>(2,GRP);
    csv->SetColumn<double>(3,MU);
    csv->SetColumn<double>(4,SIG);
-   csv->SetHeader("dev,beam_state,group,mean,stdev");
+   csv->SetHeader(header);
    csv->WriteFile(out_path.c_str());
-   delete csv;
 
+   delete csv;
    return 0;
 }

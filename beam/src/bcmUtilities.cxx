@@ -129,4 +129,28 @@ namespace bcm_util {
       mean  = math_df::GetMean<double>(Y);
       stdev = math_df::GetStandardDeviation<double>(Y);
    }
+   //______________________________________________________________________________
+   void SubtractBaseline(std::vector<producedVariable_t> on,std::vector<producedVariable_t> off, 
+                         std::vector<producedVariable_t> &diff,bool isDebug){
+      // compute the quantity (beam-on) - (beam-off) for all variables
+      double arg=0,argErr=0;
+      producedVariable_t x;
+      const int N = off.size();
+      for(int i=0;i<N;i++){
+	 arg          = on[i].mean - off[i].mean;
+	 argErr       = TMath::Sqrt( on[i].stdev*on[i].stdev + off[i].stdev*off[i].stdev );
+	 x.mean       = arg;
+	 x.stdev      = argErr;
+	 x.dev        = on[i].dev;
+	 x.beam_state = "DIFF";
+	 x.group      = on[i].group;
+	 diff.push_back(x); 
+	 // print 
+	 if(isDebug){
+	    std::cout << Form("%s: on: %.3lf ± %.3lf, off: %.3lf ± %.3lf, on-off: %.3lf ± %.3lf",
+		  on[i].dev.c_str(),on[i].mean,on[i].stdev,off[i].mean,off[i].stdev,arg,argErr) << std::endl;
+	 }
+      }
+
+   }
 }
