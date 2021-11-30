@@ -61,7 +61,11 @@ int bcmProcessCuts(){
    // vectors to store results
    std::vector<std::string> DEV,BEAM_STATE; 
    std::vector<int> GRP; 
-   std::vector<double> MU,SIG; 
+   std::vector<double> MU,SIG;
+   // for epics vars  
+   std::vector<std::string> EDEV,EBEAM_STATE; 
+   std::vector<int> EGRP; 
+   std::vector<double> EMU,ESIG; 
 
    // let's do cuts on each variable defined 
    const int NC = cutList.size(); 
@@ -79,12 +83,20 @@ int bcmProcessCuts(){
       bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
       std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
                         cutList[i].low,cutList[i].high,cutList[i].group,theVar.Data(),mean,stdev) << std::endl; 
-      // save results 
-      DEV.push_back( cutList[i].dev );  
-      BEAM_STATE.push_back( cutList[i].beam_state );  
-      GRP.push_back( cutList[i].group );  
-      MU.push_back(mean);  
-      SIG.push_back(stdev);  
+      // save results
+      if(cutList[i].arm.compare("E")==0){
+	 EDEV.push_back( cutList[i].dev );  
+	 EBEAM_STATE.push_back( cutList[i].beam_state );  
+	 EGRP.push_back( cutList[i].group );  
+	 EMU.push_back(mean);  
+	 ESIG.push_back(stdev); 
+      }else{ 
+	 DEV.push_back( cutList[i].dev );  
+	 BEAM_STATE.push_back( cutList[i].beam_state );  
+	 GRP.push_back( cutList[i].group );  
+	 MU.push_back(mean);  
+	 SIG.push_back(stdev); 
+      } 
       // set up for next cut 
       v.clear();
       time.clear();
