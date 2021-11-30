@@ -156,7 +156,7 @@ int bcmCalibrate(){
    }
    std::cout << "=======================" << std::endl;
 
-   rc = WriteToFile(out_path_cc.c_str(),CC);
+   rc = PrintToFile(out_path_cc.c_str(),CC);
 
    return rc;
 }
