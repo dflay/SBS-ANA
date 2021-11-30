@@ -1,4 +1,4 @@
-// Plot all BCM data  
+// Check the chosen cuts for the BCM data  
 
 #include <cstdlib>
 #include <iostream>
@@ -14,7 +14,7 @@
 #include "./src/BCMPlotter.cxx"
 #include "./src/bcmUtilities.cxx"
 
-int bcmPlot(){
+int bcmCheckCuts(){
 
    // settings 
    bool logScale   = false;
@@ -41,6 +41,10 @@ int bcmPlot(){
       myPlotter->LoadFile(filePath);
    } 
 
+   std::vector<cut_t> cutList; 
+   rc = bcm_util::LoadCuts("./input/cut-list.csv",cutList); 
+   if(rc!=0) return 1; 
+
    const int N = 7; 
    TString varName[N] = {"u1","unew","unser","dnew","d1","d3","d10"};
 
@@ -56,6 +60,31 @@ int bcmPlot(){
    const int NT = time.size();
    double timeMin = time[0];
    double timeMax = time[NT-1]; 
+   
+   TString theVar; 
+   double mean=0,stdev=0;
+   std::vector<double> v; 
+
+   const int NC = cutList.size();
+   TLine **lo = new TLine*[NC]; 
+   TLine **hi = new TLine*[NC]; 
+
+   // let's do cuts on each variable defined 
+   for(int i=0;i<NC;i++){
+      // define variable and get a vector of all data  
+      theVar = Form("sbs.bcm.%s.rate",cutList[i].dev.c_str());
+      myPlotter->GetVector("sbs",theVar.Data(),v); 
+      bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
+      std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
+                        cutList[i].low,cutList[i].high,cutList[i].group,theVar.Data(),mean,stdev) << std::endl; 
+      // make lines we can plot 
+      lo[i] = new TLine(cutList[i].low ,mean-5*stdev,cutList[i].low ,mean+5*stdev);
+      lo[i]->SetLineColor(kRed); 
+      hi[i] = new TLine(cutList[i].high,mean-5*stdev,cutList[i].high,mean+5*stdev);
+      hi[i]->SetLineColor(kRed);
+      // set up for next cut 
+      v.clear();
+   }
  
    // create histos and TGraphs 
 

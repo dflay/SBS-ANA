@@ -9,7 +9,9 @@ BCMPlotter::BCMPlotter(const char *filePath,bool isDebug,bool enableEPICS){
    fChainLeft   = nullptr; 
    fChainSBS    = nullptr; 
    fChainEPICS  = nullptr; 
-   fNEntries    = 0; 
+   fNEntriesLeft  = 0; 
+   fNEntriesSBS   = 0; 
+   fNEntriesEPICS = 0; 
 
    // set up chains 
    fChainLeft  = new TChain("TSLeft"); 
@@ -98,24 +100,23 @@ void BCMPlotter::LoadFile(const char *filePath){
    }
 
    fChainLeft->Add(treePath_LHRS);
-   fNEntries = fChainLeft->GetEntries();
+   fNEntriesLeft = fChainLeft->GetEntries();
    fTreeLeft = fChainLeft->GetTree();
 
    fChainSBS->Add(treePath_SBS);
-   fNEntries = fChainSBS->GetEntries();
+   fNEntriesSBS = fChainSBS->GetEntries();
    fTreeSBS  = fChainSBS->GetTree();
 
    if(fEnableEPICS){
       fChainEPICS->Add(treePath_EPICS);
-      fNEntries  = fChainEPICS->GetEntries();
+      fNEntriesEPICS = fChainEPICS->GetEntries();
       fTreeEPICS = fChainEPICS->GetTree();
    }
 
    if(fIsDebug){
-      std::cout << "NEntries = " << fNEntries 
-                << ", Tree addresses: TSLeft = " << fTreeLeft 
-                << " TSsbs = " << fTreeSBS 
-                << " E = " << fTreeEPICS << std::endl;
+      std::cout << "Tree: TSLeft, addr = " << fTreeLeft  << ", NEntries = " << fNEntriesLeft  << std::endl;
+      std::cout << "Tree: TSsbs , addr = " << fTreeSBS   << ", NEntries = " << fNEntriesSBS   << std::endl;
+      std::cout << "Tree: E     , addr = " << fTreeEPICS << ", NEntries = " << fNEntriesEPICS << std::endl;
    }
 
    // now set branch addresses so we can fill vectors, histos, etc 
@@ -295,8 +296,13 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
 
    if(fIsDebug) std::cout << "arm = " << arm << ", var = " << var << std::endl;
 
+   int NN=0;
+   if(armName.compare("Left")==0) NN = fNEntriesLeft; 
+   if(armName.compare("sbs")==0)  NN = fNEntriesSBS; 
+   if(armName.compare("E")==0)    NN = fNEntriesEPICS; 
+
    double val=0,time=0;
-   for(int i=0;i<fNEntries;i++){
+   for(int i=0;i<NN;i++){
       if(armName.compare("Left")==0){
          fTreeLeft->GetEntry(i);
 	 if(ftime_left_den!=0) time = ftime_left_num/ftime_left_den;

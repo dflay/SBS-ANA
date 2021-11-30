@@ -20,7 +20,7 @@
 class BCMPlotter {
 
    private:
-      int fNEntries; 
+      int fNEntriesLeft,fNEntriesSBS,fNEntriesEPICS; 
       bool fIsDebug,fEnableEPICS;
       std::vector<std::string> fVarName;   
       TTree *fTreeLeft,*fTreeSBS,*fTreeEPICS;
