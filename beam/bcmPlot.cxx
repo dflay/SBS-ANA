@@ -76,43 +76,37 @@ int bcmPlot(){
 
    for(int i=0;i<N/2;i++){
       c1a->cd(i+1);
-      g[i]->Draw();
+      g[i]->Draw("alp");
       g[i]->SetMarkerStyle(20); 
       g[i]->SetTitle(Form("%s",varName[i].Data())); 
       g[i]->GetXaxis()->SetTitle("Time [sec]"); 
       g[i]->GetXaxis()->CenterTitle(); 
       g[i]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[i].Data())); 
       g[i]->GetYaxis()->CenterTitle(); 
-      g[i]->Draw();
-      lo[i]->Draw("same"); 
-      hi[i]->Draw("same");
+      g[i]->Draw("alp");
       c1a->Update();
       c1b->cd(i+1);
-      g[i+3]->Draw();
+      g[i+3]->Draw("alp");
       g[i+3]->SetMarkerStyle(20); 
       g[i+3]->SetTitle(Form("%s",varName[i+3].Data())); 
       g[i+3]->GetXaxis()->SetTitle("Time [sec]"); 
       g[i+3]->GetXaxis()->CenterTitle(); 
       g[i+3]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[i+3].Data())); 
       g[i+3]->GetYaxis()->CenterTitle(); 
-      g[i+3]->Draw();
-      lo[i+3]->Draw("same"); 
-      hi[i+3]->Draw("same");
+      g[i+3]->Draw("alp");
       c1b->Update();
    }
 
    // last one 
    c1b->cd(4); 
-   g[6]->Draw();
+   g[6]->Draw("alp");
    g[6]->SetMarkerStyle(20); 
    g[6]->SetTitle(Form("%s",varName[6].Data())); 
    g[6]->GetXaxis()->SetTitle("Time [sec]"); 
    g[6]->GetXaxis()->CenterTitle(); 
    g[6]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[6].Data())); 
    g[6]->GetYaxis()->CenterTitle(); 
-   g[6]->Draw();
-   lo[6]->Draw("same"); 
-   hi[6]->Draw("same");
+   g[6]->Draw("alp");
    c1b->Update();
 
    // EPICS plots
@@ -125,6 +119,7 @@ int bcmPlot(){
    gEPICSCurrent->GetXaxis()->CenterTitle();  
    gEPICSCurrent->GetYaxis()->SetTitle("IBC1H04CRCUR2");  
    gEPICSCurrent->GetYaxis()->CenterTitle();  
+   gEPICSCurrent->Draw("alp");
    c3->Update();  
 
    return 0;

@@ -5,7 +5,7 @@
 namespace bcm_util {
    //______________________________________________________________________________
    int LoadProducedVariables(const char *inpath,std::vector<producedVariable_t> &data){
-      // load run list from a file 
+      // load variables that have been cut on => produced variable  
       CSVManager *csv = new CSVManager();
       int rc = csv->ReadFile(inpath,true);
       if(rc!=0){
@@ -40,7 +40,7 @@ namespace bcm_util {
    }
    //______________________________________________________________________________
    int LoadConfigPaths(const char *inpath,std::vector<std::string> &label,std::vector<std::string> &path){
-      // load run list from a file 
+      // load configuration paths  
       CSVManager *csv = new CSVManager();
       int rc = csv->ReadFile(inpath);
       if(rc!=0){
@@ -88,7 +88,8 @@ namespace bcm_util {
 	 return 1;
       }
 
-      std::vector<std::string> dev,beam_state;
+      std::vector<std::string> arm,dev,beam_state;
+      csv->GetColumn_byName_str("arm"       ,arm);
       csv->GetColumn_byName_str("dev"       ,dev);
       csv->GetColumn_byName_str("beam_state",beam_state);
 
@@ -102,6 +103,7 @@ namespace bcm_util {
       cut_t aCut;
       const int N = dev.size();
       for(int i=0;i<N;i++){
+         aCut.arm        = arm[i];
 	 aCut.dev        = dev[i];
 	 aCut.beam_state = beam_state[i];
 	 aCut.low        = low[i];

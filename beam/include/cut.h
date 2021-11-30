@@ -4,6 +4,7 @@
 // a simple struct to hold cut data 
 
 typedef struct cut {
+   std::string arm;            // arm: Left, sbs, or E (EPICS) 
    std::string dev;            // device name 
    std::string beam_state;     // beam state (on or off) 
    double low;                 // low cut value 
@@ -11,7 +12,7 @@ typedef struct cut {
    int group;                  // group/categorization 
    // constructor 
    cut():
-      dev("NONE"),beam_state("NONE"),low(0),high(0),group(0) 
+      arm("NONE"),dev("NONE"),beam_state("NONE"),low(0),high(0),group(0) 
    {} 
 } cut_t; 
 

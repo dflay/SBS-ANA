@@ -53,17 +53,9 @@ int bcmCheckCuts(){
    double loBeamOff[N] = {50  ,0  ,700E+3,0    ,1E+3  ,0  ,0  };
    double hiBeamOff[N] = {150,100 ,850E+3,20E+3,1.5E+3,100,100};
 
-   // test getting a vector of data 
-   std::vector<double> time; 
-   myPlotter->GetVector("sbs","time",time); 
-
-   const int NT = time.size();
-   double timeMin = time[0];
-   double timeMax = time[NT-1]; 
-   
    TString theVar; 
    double mean=0,stdev=0;
-   std::vector<double> v; 
+   std::vector<double> time,v; 
 
    const int NC = cutList.size();
    TLine **lo = new TLine*[NC]; 
@@ -72,8 +64,14 @@ int bcmCheckCuts(){
    // let's do cuts on each variable defined 
    for(int i=0;i<NC;i++){
       // define variable and get a vector of all data  
-      theVar = Form("sbs.bcm.%s.rate",cutList[i].dev.c_str());
-      myPlotter->GetVector("sbs",theVar.Data(),v); 
+      if(cutList[i].arm.compare("E")==0){
+	 // EPICS variable 
+	 theVar = Form("%s",cutList[i].dev.c_str());
+      }else{
+	 theVar = Form("%s.bcm.%s.rate",cutList[i].arm.c_str(),cutList[i].dev.c_str());
+      }
+      myPlotter->GetVector(cutList[i].arm.c_str(),"time",time); 
+      myPlotter->GetVector(cutList[i].arm.c_str(),theVar.Data(),v); 
       bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
       std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
                         cutList[i].low,cutList[i].high,cutList[i].group,theVar.Data(),mean,stdev) << std::endl; 
@@ -84,6 +82,7 @@ int bcmCheckCuts(){
       hi[i]->SetLineColor(kRed);
       // set up for next cut 
       v.clear();
+      time.clear();
    }
  
    // create histos and TGraphs 
@@ -154,6 +153,8 @@ int bcmCheckCuts(){
    gEPICSCurrent->GetXaxis()->CenterTitle();  
    gEPICSCurrent->GetYaxis()->SetTitle("IBC1H04CRCUR2");  
    gEPICSCurrent->GetYaxis()->CenterTitle();  
+   lo[7]->Draw("same"); 
+   hi[7]->Draw("same");
    c3->Update();  
 
    return 0;

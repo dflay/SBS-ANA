@@ -53,15 +53,10 @@ int bcmProcessCuts(){
    std::vector<cut_t> cutList; 
    rc = bcm_util::LoadCuts(cut_path.c_str(),cutList); 
    if(rc!=0) return 1; 
-
-   // get the time, this is what we base the cuts on  
-   std::vector<double> time; 
-   myPlotter->GetVector("sbs","time",time); 
    
    TString theVar; 
    double mean=0,stdev=0;
-   double CUT_LO=0,CUT_HI=0;
-   std::vector<double> v; 
+   std::vector<double> v,time; 
 
    // vectors to store results
    std::vector<std::string> DEV,BEAM_STATE; 
@@ -72,8 +67,15 @@ int bcmProcessCuts(){
    const int NC = cutList.size(); 
    for(int i=0;i<NC;i++){
       // define variable and get a vector of all data  
-      theVar = Form("sbs.bcm.%s.rate",cutList[i].dev.c_str());
-      myPlotter->GetVector("sbs",theVar.Data(),v); 
+      if(cutList[i].arm.compare("E")==0){
+	 // EPICS variable 
+	 theVar = Form("%s",cutList[i].dev.c_str());
+      }else{
+	 theVar = Form("%s.bcm.%s.rate",cutList[i].arm.c_str(),cutList[i].dev.c_str());
+      }
+      myPlotter->GetVector(cutList[i].arm.c_str(),"time",time);
+      myPlotter->GetVector(cutList[i].arm.c_str(),theVar.Data(),v);
+      // compute stats with cuts 
       bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
       std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
                         cutList[i].low,cutList[i].high,cutList[i].group,theVar.Data(),mean,stdev) << std::endl; 
@@ -85,6 +87,7 @@ int bcmProcessCuts(){
       SIG.push_back(stdev);  
       // set up for next cut 
       v.clear();
+      time.clear();
    }
 
    // write results to file
