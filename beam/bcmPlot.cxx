@@ -25,8 +25,8 @@ int bcmPlot(){
    int rc=0;
 
    TString prefix; 
-   std::vector<int> runList;
-   rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList);
+   std::vector<int> runList,stream,segBeg,segEnd;
+   rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList,stream,segBeg,segEnd);
    if(rc!=0) return 1; 
 
    BCMPlotter *myPlotter = new BCMPlotter();
@@ -34,31 +34,16 @@ int bcmPlot(){
    myPlotter->EnableEPICS(); 
 
    TString filePath;  
-   int startSegment = 0; 
-   int endSegment   = 0; 
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
-      filePath = Form("%s/gmn_replayed-beam_%d_stream0_seg%d_%d.root",prefix.Data(),runList[i],startSegment,endSegment);
+      filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",prefix.Data(),runList[i],stream[i],segBeg[i],segEnd[i]);
       myPlotter->LoadFile(filePath);
    } 
 
    const int N = 7; 
    TString varName[N] = {"u1","unew","unser","dnew","d1","d3","d10"};
 
-   int NBin = 100;
-   // histo bounds        u1  unew unser  dnew  d1     d3  d10
-   double loBeamOff[N] = {50  ,0  ,700E+3,0    ,1E+3  ,0  ,0  };
-   double hiBeamOff[N] = {150,100 ,850E+3,20E+3,1.5E+3,100,100};
-
-   // test getting a vector of data 
-   std::vector<double> time; 
-   myPlotter->GetVector("sbs","time",time); 
-
-   const int NT = time.size();
-   double timeMin = time[0];
-   double timeMax = time[NT-1]; 
-
-   // create histos and TGraphs 
+   // create and TGraphs 
 
    TGraph **g = new TGraph*[N]; 
 

@@ -79,7 +79,8 @@ namespace bcm_util {
       return 0;  
    }
    //______________________________________________________________________________
-   int LoadRuns(const char *inpath,TString &prefix,std::vector<int> &run){
+   int LoadRuns(const char *inpath,TString &prefix,std::vector<int> &run,
+                std::vector<int> &stream,std::vector<int> &segBeg,std::vector<int> &segEnd){
       // load run list from a file 
       CSVManager *csv = new CSVManager();
       int rc = csv->ReadFile(inpath);
@@ -88,15 +89,24 @@ namespace bcm_util {
 	 return 1;
       }
      
-      std::vector<std::string> data;
+      std::vector<std::string> data,STREAM,SEG_BEG,SEG_END;
       csv->GetColumn_byIndex_str(0,data);
-      prefix = data[0]; 
+      csv->GetColumn_byIndex_str(1,STREAM);
+      csv->GetColumn_byIndex_str(2,SEG_BEG);
+      csv->GetColumn_byIndex_str(3,SEG_END);
+      prefix = data[0];
    
-      int aRun=0; 
+      int aRun=0,aStr=0,aBeg=0,aEnd=0; 
       const int N = data.size();
       for(int i=1;i<N;i++){
 	 aRun = std::atoi( data[i].c_str() );
-	 run.push_back(aRun); 
+	 aStr = std::atoi( STREAM[i].c_str() );
+	 aBeg = std::atoi( SEG_BEG[i].c_str() );
+	 aEnd = std::atoi( SEG_END[i].c_str() );
+	 run.push_back(aRun);
+	 stream.push_back(aStr);  
+	 segBeg.push_back(aBeg);  
+	 segEnd.push_back(aEnd);  
       }
 
       delete csv; 
