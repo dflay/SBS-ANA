@@ -11,7 +11,8 @@
 #include "TLine.h"
 
 #include "./include/cut.h"
-#include "./src/BCMPlotter.cxx"
+#include "./src/Graph.cxx"
+#include "./src/BCMManager.cxx"
 #include "./src/bcmUtilities.cxx"
 
 int bcmCheckCuts(){
@@ -28,9 +29,9 @@ int bcmCheckCuts(){
    rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList);
    if(rc!=0) return 1; 
    
-   BCMPlotter *myPlotter = new BCMPlotter();
-   // myPlotter->SetDebug();
-   myPlotter->EnableEPICS(); 
+   BCMManager *mgr = new BCMManager();
+   // mgr->SetDebug();
+   mgr->EnableEPICS(); 
 
    TString filePath;  
    int startSegment = 0; 
@@ -38,7 +39,7 @@ int bcmCheckCuts(){
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
       filePath = Form("%s/gmn_replayed-beam_%d_stream0_seg%d_%d.root",prefix.Data(),runList[i],startSegment,endSegment);
-      myPlotter->LoadFile(filePath);
+      mgr->LoadFile(filePath);
    } 
 
    std::vector<cut_t> cutList; 
@@ -46,7 +47,7 @@ int bcmCheckCuts(){
    if(rc!=0) return 1; 
 
    const int N = 7; 
-   TString varName[N] = {"u1","unew","unser","dnew","d1","d3","d10"};
+   TString varName[N] = {"u1.rate","unew.rate","unser.rate","dnew.rate","d1.rate","d3.rate","d10.rate"};
 
    int NBin = 100;
    // histo bounds        u1  unew unser  dnew  d1     d3  d10
@@ -70,8 +71,8 @@ int bcmCheckCuts(){
       }else{
 	 theVar = Form("%s.bcm.%s.rate",cutList[i].arm.c_str(),cutList[i].dev.c_str());
       }
-      myPlotter->GetVector(cutList[i].arm.c_str(),"time",time); 
-      myPlotter->GetVector(cutList[i].arm.c_str(),theVar.Data(),v); 
+      mgr->GetVector(cutList[i].arm.c_str(),"time",time); 
+      mgr->GetVector(cutList[i].arm.c_str(),theVar.Data(),v); 
       bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
       std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
                         cutList[i].low,cutList[i].high,cutList[i].group,theVar.Data(),mean,stdev) << std::endl; 
@@ -90,10 +91,11 @@ int bcmCheckCuts(){
    TGraph **g = new TGraph*[N]; 
 
    for(int i=0;i<N;i++){
-      g[i] = myPlotter->GetTGraph("sbs","time",varName[i],"rate");
+      g[i] = mgr->GetTGraph("sbs","time",varName[i]);
+      graph_df::SetParameters(g[i],20,kBlack); 
    }
 
-   TGraph *gEPICSCurrent = myPlotter->GetTGraph("E","time","IBC1H04CRCUR2",""); 
+   TGraph *gEPICSCurrent = mgr->GetTGraph("E","time","IBC1H04CRCUR2"); 
    gEPICSCurrent->SetMarkerStyle(20);
 
    TCanvas *c1a = new TCanvas("c1a","BCM Check",1200,800);
@@ -102,27 +104,23 @@ int bcmCheckCuts(){
    TCanvas *c1b = new TCanvas("c1b","BCM Check",1200,800);
    c1b->Divide(2,2);
 
+   TString Title,yAxisTitle;
+
    for(int i=0;i<N/2;i++){
       c1a->cd(i+1);
       g[i]->Draw();
-      g[i]->SetMarkerStyle(20); 
-      g[i]->SetTitle(Form("%s",varName[i].Data())); 
-      g[i]->GetXaxis()->SetTitle("Time [sec]"); 
-      g[i]->GetXaxis()->CenterTitle(); 
-      g[i]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[i].Data())); 
-      g[i]->GetYaxis()->CenterTitle(); 
+      Title      = Form("%s"     ,varName[i].Data());
+      yAxisTitle = Form("%s [Hz]",varName[i].Data());
+      graph_df::SetLabels(g[i+3],Title,"Time [sec]",yAxisTitle); 
       g[i]->Draw();
       lo[i]->Draw("same"); 
       hi[i]->Draw("same");
       c1a->Update();
       c1b->cd(i+1);
       g[i+3]->Draw();
-      g[i+3]->SetMarkerStyle(20); 
-      g[i+3]->SetTitle(Form("%s",varName[i+3].Data())); 
-      g[i+3]->GetXaxis()->SetTitle("Time [sec]"); 
-      g[i+3]->GetXaxis()->CenterTitle(); 
-      g[i+3]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[i+3].Data())); 
-      g[i+3]->GetYaxis()->CenterTitle(); 
+      Title      = Form("%s"     ,varName[i+3].Data());
+      yAxisTitle = Form("%s [Hz]",varName[i+3].Data());
+      graph_df::SetLabels(g[i+3],Title,"Time [sec]",yAxisTitle); 
       g[i+3]->Draw();
       lo[i+3]->Draw("same"); 
       hi[i+3]->Draw("same");
@@ -132,12 +130,9 @@ int bcmCheckCuts(){
    // last one 
    c1b->cd(4); 
    g[6]->Draw();
-   g[6]->SetMarkerStyle(20); 
-   g[6]->SetTitle(Form("%s",varName[6].Data())); 
-   g[6]->GetXaxis()->SetTitle("Time [sec]"); 
-   g[6]->GetXaxis()->CenterTitle(); 
-   g[6]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[6].Data())); 
-   g[6]->GetYaxis()->CenterTitle(); 
+   Title      = Form("%s"     ,varName[6].Data());
+   yAxisTitle = Form("%s [Hz]",varName[6].Data());
+   graph_df::SetLabels(g[6],Title,"Time [sec]",yAxisTitle); 
    g[6]->Draw();
    lo[6]->Draw("same"); 
    hi[6]->Draw("same");
@@ -149,10 +144,7 @@ int bcmCheckCuts(){
 
    c3->cd();
    gEPICSCurrent->Draw("alp");
-   gEPICSCurrent->GetXaxis()->SetTitle("Time");  
-   gEPICSCurrent->GetXaxis()->CenterTitle();  
-   gEPICSCurrent->GetYaxis()->SetTitle("IBC1H04CRCUR2");  
-   gEPICSCurrent->GetYaxis()->CenterTitle();  
+   graph_df::SetLabels(gEPICSCurrent,"","Time [sec]","IBC1H04CRCUR2 [#muA]"); 
    lo[7]->Draw("same"); 
    hi[7]->Draw("same");
    c3->Update();  

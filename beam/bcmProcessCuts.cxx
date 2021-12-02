@@ -13,7 +13,7 @@
 #include "TLine.h"
 
 #include "./include/cut.h"
-#include "./src/BCMPlotter.cxx"
+#include "./src/BCMManager.cxx"
 #include "./src/bcmUtilities.cxx"
 
 int bcmProcessCuts(){
@@ -38,7 +38,7 @@ int bcmProcessCuts(){
    rc = bcm_util::LoadRuns(run_path.c_str(),prefix,runList);
    if(rc!=0) return 1; 
    
-   BCMPlotter *myPlotter = new BCMPlotter();
+   BCMManager *mgr = new BCMManager();
 
    TString filePath;  
    int startSegment = 0; 
@@ -47,7 +47,7 @@ int bcmProcessCuts(){
    for(int i=0;i<NR;i++){ 
       std::cout << "Loading run " << runList[i] << std::endl;
       filePath = Form("%s/gmn_replayed-beam_%d_stream0_seg%d_%d.root",prefix.Data(),runList[i],startSegment,endSegment);
-      myPlotter->LoadFile(filePath);
+      mgr->LoadFile(filePath);
    } 
 
    std::vector<cut_t> cutList; 
@@ -75,10 +75,10 @@ int bcmProcessCuts(){
 	 // EPICS variable 
 	 theVar = Form("%s",cutList[i].dev.c_str());
       }else{
-	 theVar = Form("%s.bcm.%s.rate",cutList[i].arm.c_str(),cutList[i].dev.c_str());
+	 theVar = Form("%s.rate",cutList[i].dev.c_str());
       }
-      myPlotter->GetVector(cutList[i].arm.c_str(),"time",time);
-      myPlotter->GetVector(cutList[i].arm.c_str(),theVar.Data(),v);
+      mgr->GetVector(cutList[i].arm.c_str(),"time",time);
+      mgr->GetVector(cutList[i].arm.c_str(),theVar.Data(),v);
       // compute stats with cuts 
       bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
       std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
