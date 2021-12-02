@@ -44,7 +44,7 @@ int bcmPlot(){
    const int N = 7; 
    TString varName[N] = {"u1","unew","unser","dnew","d1","d3","d10"};
 
-   // create and TGraphs 
+   // create TGraphs 
 
    TGraph **g = new TGraph*[N]; 
 
