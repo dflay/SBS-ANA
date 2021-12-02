@@ -13,21 +13,22 @@
 #include "./include/cut.h"
 #include "./src/BCMPlotter.cxx"
 #include "./src/bcmUtilities.cxx"
+#include "./src/Graph.cxx"
 
 int bcmPlot(){
 
    // settings 
    bool logScale   = false;
-   
+
    gStyle->SetOptStat(0);
- 
+
    int rc=0;
 
    TString prefix; 
    std::vector<int> runList;
    rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList);
    if(rc!=0) return 1; 
-   
+
    BCMPlotter *myPlotter = new BCMPlotter();
    // myPlotter->SetDebug();
    myPlotter->EnableEPICS(); 
@@ -56,13 +57,14 @@ int bcmPlot(){
    const int NT = time.size();
    double timeMin = time[0];
    double timeMax = time[NT-1]; 
- 
+
    // create histos and TGraphs 
 
    TGraph **g = new TGraph*[N]; 
 
    for(int i=0;i<N;i++){
       g[i] = myPlotter->GetTGraph("sbs","time",varName[i],"rate");
+      graph_df::SetParameters(g[i],20,kBlack); 
    }
 
    TGraph *gEPICSCurrent = myPlotter->GetTGraph("E","time","IBC1H04CRCUR2",""); 
@@ -74,38 +76,33 @@ int bcmPlot(){
    TCanvas *c1b = new TCanvas("c1b","BCM Check",1200,800);
    c1b->Divide(2,2);
 
+   TString Title,yAxisTitle;
+   TString xAxisTitle = Form("Time [sec]"); 
+
    for(int i=0;i<N/2;i++){
       c1a->cd(i+1);
+      Title      = Form("%s"     ,varName[i].Data());
+      yAxisTitle = Form("%s [Hz]",varName[i].Data());
       g[i]->Draw("alp");
-      g[i]->SetMarkerStyle(20); 
-      g[i]->SetTitle(Form("%s",varName[i].Data())); 
-      g[i]->GetXaxis()->SetTitle("Time [sec]"); 
-      g[i]->GetXaxis()->CenterTitle(); 
-      g[i]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[i].Data())); 
-      g[i]->GetYaxis()->CenterTitle(); 
+      graph_df::SetLabels(g[i],Title,xAxisTitle,yAxisTitle); 
       g[i]->Draw("alp");
       c1a->Update();
+      // next canvas 
       c1b->cd(i+1);
+      Title      = Form("%s"     ,varName[i+3].Data());
+      yAxisTitle = Form("%s [Hz]",varName[i+3].Data());
       g[i+3]->Draw("alp");
-      g[i+3]->SetMarkerStyle(20); 
-      g[i+3]->SetTitle(Form("%s",varName[i+3].Data())); 
-      g[i+3]->GetXaxis()->SetTitle("Time [sec]"); 
-      g[i+3]->GetXaxis()->CenterTitle(); 
-      g[i+3]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[i+3].Data())); 
-      g[i+3]->GetYaxis()->CenterTitle(); 
+      graph_df::SetLabels(g[i+3],Title,xAxisTitle,yAxisTitle); 
       g[i+3]->Draw("alp");
       c1b->Update();
    }
 
    // last one 
+   Title      = Form("%s"     ,varName[6].Data());
+   yAxisTitle = Form("%s [Hz]",varName[6].Data());
    c1b->cd(4); 
    g[6]->Draw("alp");
-   g[6]->SetMarkerStyle(20); 
-   g[6]->SetTitle(Form("%s",varName[6].Data())); 
-   g[6]->GetXaxis()->SetTitle("Time [sec]"); 
-   g[6]->GetXaxis()->CenterTitle(); 
-   g[6]->GetYaxis()->SetTitle(Form("%s [Hz]",varName[6].Data())); 
-   g[6]->GetYaxis()->CenterTitle(); 
+   graph_df::SetLabels(g[6],Title,xAxisTitle,yAxisTitle); 
    g[6]->Draw("alp");
    c1b->Update();
 
@@ -113,14 +110,14 @@ int bcmPlot(){
 
    TCanvas *c3 = new TCanvas("c3","EPICS Beam Current",1200,800); 
 
+   Title      = Form("IBC1H04CRCUR2"       );
+   yAxisTitle = Form("IBC1H04CRCUR2 [#muA]");
+
    c3->cd();
    gEPICSCurrent->Draw("alp");
-   gEPICSCurrent->GetXaxis()->SetTitle("Time");  
-   gEPICSCurrent->GetXaxis()->CenterTitle();  
-   gEPICSCurrent->GetYaxis()->SetTitle("IBC1H04CRCUR2");  
-   gEPICSCurrent->GetYaxis()->CenterTitle();  
+   graph_df::SetLabels(gEPICSCurrent,Title,xAxisTitle,yAxisTitle); 
    gEPICSCurrent->Draw("alp");
-   c3->Update();  
+   c3->Update();
 
    return 0;
 }
