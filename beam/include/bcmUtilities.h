@@ -9,6 +9,7 @@
 #include <vector> 
 
 #include "cut.h"
+#include "codaRun.h"
 #include "producedVariable.h"
 
 namespace bcm_util {
@@ -16,8 +17,7 @@ namespace bcm_util {
    int Print(producedVariable_t data); 
    int LoadProducedVariables(const char *inpath,std::vector<producedVariable_t> &data); 
    int LoadConfigPaths(const char *inpath,std::vector<std::string> &label,std::vector<std::string> &path); 
-   int LoadRuns(const char *inpath,TString &prefix,std::vector<int> &run,
-                std::vector<int> &stream,std::vector<int> &segStart,std::vector<int> &segEnd); 
+   int LoadRuns(const char *inpath,TString &prefix,std::vector<codaRun_t> &runList); 
    int LoadCuts(const char *inpath,std::vector<cut_t> &data);
    int SubtractBaseline(std::vector<producedVariable_t> on,std::vector<producedVariable_t> off, 
                         std::vector<producedVariable_t> &diff,bool isDebug=false);

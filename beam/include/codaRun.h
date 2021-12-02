@@ -1,5 +1,5 @@
-#ifndef UTIL_RUN_H
-#define UTIL_RUN_H
+#ifndef UTIL_CODA_RUN_H
+#define UTIL_CODA_RUN_H
 
 // a simple struct for CODA run info 
 

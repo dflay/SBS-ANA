@@ -10,7 +10,7 @@
 #include "TPad.h"
 #include "TLine.h"
 
-#include "./include/cut.h"
+#include "./include/codaRun.h"
 #include "./src/BCMPlotter.cxx"
 #include "./src/bcmUtilities.cxx"
 #include "./src/Graph.cxx"
@@ -24,9 +24,9 @@ int bcmPlot(){
 
    int rc=0;
 
-   TString prefix; 
-   std::vector<int> runList,stream,segBeg,segEnd;
-   rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList,stream,segBeg,segEnd);
+   TString prefix;
+   std::vector<codaRun_t> runList;  
+   rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList);
    if(rc!=0) return 1; 
 
    BCMPlotter *myPlotter = new BCMPlotter();
@@ -36,7 +36,8 @@ int bcmPlot(){
    TString filePath;  
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
-      filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",prefix.Data(),runList[i],stream[i],segBeg[i],segEnd[i]);
+      filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
+                      prefix.Data(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
       myPlotter->LoadFile(filePath);
    } 
 
