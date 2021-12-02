@@ -30,24 +30,17 @@ int bcmPlot(const char *runPath){
    if(rc!=0) return 1; 
 
    BCMManager *mgr = new BCMManager();
-   mgr->SetDebug();
-   mgr->EnableEPICS();
 
    TString filePath;  
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
       filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
                       prefix.Data(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
-      mgr->LoadFile(filePath);
+      mgr->LoadFile(filePath,runList[i].runNumber);
    }
 
-   rc = mgr->SetTrees();
-   if(rc!=0) return rc; 
-
-   mgr->Print("E");  
-
    const int N = 7; 
-   TString varName[N] = {"u1","unew","unser","dnew","d1","d3","d10"};
+   TString varName[N] = {"u1.rate","unew.rate","unser.rate","dnew.rate","d1.rate","d3.rate","d10.rate"};
    TString xAxis      = Form("event"); 
 
    // create TGraphs 
@@ -55,11 +48,11 @@ int bcmPlot(const char *runPath){
    TGraph **g = new TGraph*[N]; 
 
    for(int i=0;i<N;i++){
-      g[i] = mgr->GetTGraph("sbs",xAxis.Data(),varName[i],"rate");
+      g[i] = mgr->GetTGraph("sbs",xAxis.Data(),varName[i]);
       graph_df::SetParameters(g[i],20,kBlack); 
    }
 
-   TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2",""); 
+   TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2"); 
    gEPICSCurrent->SetMarkerStyle(20);
 
    TCanvas *c1a = new TCanvas("c1a","BCM Check",1200,800);

@@ -12,71 +12,45 @@
 #include "TString.h"
 #include "TFile.h"
 #include "TChain.h"
+#include "TTree.h"
 #include "TH1F.h"
 #include "TH2F.h"
 #include "TGraph.h"
 #include "TGraphErrors.h"
 
+#include "scalerData.h"
+#include "epicsData.h"
+
 class BCMManager {
 
    private:
-      int fNEntries,fNEntriesLeft,fNEntriesSBS,fNEntriesEPICS; 
-      bool fIsDebug,fEnableEPICS,fBranchesSet;
-      std::vector<std::string> fVarName;   
-      TTree *fTreeLeft,*fTreeSBS,*fTreeEPICS;
-      TChain *fChain,*fChainLeft,*fChainSBS,*fChainEPICS;
-      TString fLeftVarTime_num,fLeftVarTime_den;
-      TString fSBSVarTime_num,fSBSVarTime_den;
+      bool fIsDebug; 
+      int fEvtCntrLeft,fEvtCntrSBS,fEvtCntrEPICS;
+      double fLastTime; 
 
-      double fu1r_left,fu1c_left;
-      double funewr_left,funewc_left;
-      double fd1r_left,fd1c_left;
-      double fd3r_left,fd3c_left;
-      double fd10r_left,fd10c_left;
-      double fdnewr_left,fdnewc_left;
-      double funserr_left,funserc_left;
-      double ftime_left_num,ftime_left_den;
-
-      double fu1r_sbs,fu1c_sbs;
-      double funewr_sbs,funewc_sbs;
-      double fd1r_sbs,fd1c_sbs;
-      double fd3r_sbs,fd3c_sbs;
-      double fd10r_sbs,fd10c_sbs;
-      double fdnewr_sbs,fdnewc_sbs;
-      double funserr_sbs,funserc_sbs;
-      double ftime_sbs_num,ftime_sbs_den;
-
-      double fEPICSTime; 
-      double fhac_bcm_average;
-      double fIBC1H04CRCUR2;
-      double fIPM1H04A_XPOS,fIPM1H04A_YPOS;
-      double fIPM1H04E_XPOS,fIPM1H04E_YPOS;
-
-      int CheckVariable(const char *arm,const char *var);
-      int SetBranchAddresses(); 
+      std::vector<scalerData_t> fLeft,fSBS;
+      std::vector<epicsData_t> fEPICS; 
 
    public: 
-      BCMManager(const char *filePath="NONE",bool isDebug=false,bool enableEPICS=false);
+      BCMManager(const char *filePath="NONE",bool isDebug=false);
       ~BCMManager(); 
 
-      void SetDebug(bool v=true)     { fIsDebug     = v; } 
-      void EnableEPICS(bool v=true)  { fEnableEPICS = v; }
+      void SetDebug(bool v=true)  { fIsDebug = v; } 
 
-      void Print(const char *arm);  
-      void LoadFile(const char *filePath);
-      void SetTimeVariable(const char *arm,const char *var); 
-
-      int SetTrees(); 
+      void Clear(); 
+      void LoadFile(const char *filePath,int runNumber=0);
+      void LoadDataFromTree(const char *filePath,const char *treeName,int runNumber=0);
+      void LoadEPICSDataFromTree(const char *filePath,int runNumber=0);
+      void Print(const char *arm);
 
       int GetVector(const char *arm,const char *var,std::vector<double> &v); 
 
-      TH1F * GetTH1F(const char *h_name,const char *h_range,
-                     const char *arm,const char *var_name,const char *type);
- 
-      TH2F * GetTH2F(const char *h_name,const char *h_range,
-                     const char *arm,const char *xAxis,const char *yAxis,const char *type);
+      TH1F * GetTH1F(const char *arm,const char *var_name,int NBin,double min,double max);
 
-      TGraph * GetTGraph(const char *arm,const char *xAxis,const char *yAxis,const char *type);  
+      TH2F * GetTH2F(const char *arm,const char *xAxis,const char *yAxis,
+	             int NXBin,double xMin,double xMax,int NYBin,double yMin,double yMax);  
+
+      TGraph * GetTGraph(const char *arm,const char *xAxis,const char *yAxis);  
 
 }; 
 
