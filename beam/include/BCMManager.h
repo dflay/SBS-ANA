@@ -1,5 +1,5 @@
-#ifndef BCM_PLOTTER_H
-#define BCM_PLOTTER_H
+#ifndef BCM_MANAGER_H
+#define BCM_MANAGER_H
 
 // a class that can produce plots of the BCM variables 
 // as a function of event number or time in the run 
@@ -17,14 +17,14 @@
 #include "TGraph.h"
 #include "TGraphErrors.h"
 
-class BCMPlotter {
+class BCMManager {
 
    private:
-      int fNEntriesLeft,fNEntriesSBS,fNEntriesEPICS; 
-      bool fIsDebug,fEnableEPICS;
+      int fNEntries,fNEntriesLeft,fNEntriesSBS,fNEntriesEPICS; 
+      bool fIsDebug,fEnableEPICS,fBranchesSet;
       std::vector<std::string> fVarName;   
       TTree *fTreeLeft,*fTreeSBS,*fTreeEPICS;
-      TChain *fChainLeft,*fChainSBS,*fChainEPICS;
+      TChain *fChain,*fChainLeft,*fChainSBS,*fChainEPICS;
       TString fLeftVarTime_num,fLeftVarTime_den;
       TString fSBSVarTime_num,fSBSVarTime_den;
 
@@ -56,13 +56,17 @@ class BCMPlotter {
       int SetBranchAddresses(); 
 
    public: 
-      BCMPlotter(const char *filePath="NONE",bool isDebug=false,bool enableEPICS=false);
-      ~BCMPlotter(); 
+      BCMManager(const char *filePath="NONE",bool isDebug=false,bool enableEPICS=false);
+      ~BCMManager(); 
 
       void SetDebug(bool v=true)     { fIsDebug     = v; } 
-      void EnableEPICS(bool v=true)  { fEnableEPICS = v; } 
+      void EnableEPICS(bool v=true)  { fEnableEPICS = v; }
+
+      void Print(const char *arm);  
       void LoadFile(const char *filePath);
       void SetTimeVariable(const char *arm,const char *var); 
+
+      int SetTrees(); 
 
       int GetVector(const char *arm,const char *var,std::vector<double> &v); 
 

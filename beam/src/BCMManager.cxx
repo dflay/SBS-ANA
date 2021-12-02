@@ -1,19 +1,23 @@
-#include "../include/BCMPlotter.h"
+#include "../include/BCMManager.h"
 //______________________________________________________________________________
-BCMPlotter::BCMPlotter(const char *filePath,bool isDebug,bool enableEPICS){
+BCMManager::BCMManager(const char *filePath,bool isDebug,bool enableEPICS){
    fIsDebug     = isDebug;
-   fEnableEPICS = enableEPICS;  
+   fEnableEPICS = enableEPICS; 
+   fBranchesSet = false; 
    fTreeLeft    = nullptr; 
    fTreeSBS     = nullptr;
    fTreeEPICS   = nullptr;
+   fChain       = nullptr; 
    fChainLeft   = nullptr; 
    fChainSBS    = nullptr; 
    fChainEPICS  = nullptr; 
+   fNEntries      = 0; 
    fNEntriesLeft  = 0; 
    fNEntriesSBS   = 0; 
    fNEntriesEPICS = 0; 
 
    // set up chains 
+   // fChain      = new TChain("myChain"); 
    fChainLeft  = new TChain("TSLeft"); 
    fChainSBS   = new TChain("TSsbs"); 
    fChainEPICS = new TChain("E"); 
@@ -66,17 +70,18 @@ BCMPlotter::BCMPlotter(const char *filePath,bool isDebug,bool enableEPICS){
 
 }
 //______________________________________________________________________________
-BCMPlotter::~BCMPlotter(){
+BCMManager::~BCMManager(){
    delete fTreeLeft;
    delete fTreeSBS;
    delete fTreeEPICS;
+   delete fChain; 
    delete fChainLeft; 
    delete fChainSBS;
    delete fChainEPICS;
    fVarName.clear();
 }
 //______________________________________________________________________________
-void BCMPlotter::SetTimeVariable(const char *arm,const char *var){
+void BCMManager::SetTimeVariable(const char *arm,const char *var){
    std::string armName = arm;
    if(armName.compare("Left")==0){
       fLeftVarTime_num = Form("Left.%s.cnt",var);
@@ -89,29 +94,111 @@ void BCMPlotter::SetTimeVariable(const char *arm,const char *var){
    SetBranchAddresses(); 
 }
 //______________________________________________________________________________
-void BCMPlotter::LoadFile(const char *filePath){
+void BCMManager::LoadFile(const char *filePath){
    // Attach trees for LHRS and SBS 
-   TString treePath_LHRS  = Form("%s/TSLeft",filePath);
-   TString treePath_SBS   = Form("%s/TSsbs" ,filePath);
-   TString treePath_EPICS = Form("%s/E"     ,filePath);
+   TString treePath_LHRS  = Form("%s",filePath);
+   TString treePath_SBS   = Form("%s",filePath);
+   TString treePath_EPICS = Form("%s",filePath);
 
    if(fIsDebug){
       std::cout << "Loading trees TSLeft, TSsbs, and E from file: " << filePath << std::endl;
    }
 
+   // fChain->Add(filePath); 
+   // fNEntries = fChain->GetEntries();
+
    fChainLeft->Add(treePath_LHRS);
    fNEntriesLeft = fChainLeft->GetEntries();
-   fTreeLeft = fChainLeft->GetTree();
+   // if(fTreeLeft==nullptr) fTreeLeft = fChainLeft->GetTree();
 
    fChainSBS->Add(treePath_SBS);
    fNEntriesSBS = fChainSBS->GetEntries();
-   fTreeSBS  = fChainSBS->GetTree();
+   // if(fTreeSBS==nullptr) fTreeSBS  = fChainSBS->GetTree();
 
    if(fEnableEPICS){
       fChainEPICS->Add(treePath_EPICS);
       fNEntriesEPICS = fChainEPICS->GetEntries();
-      fTreeEPICS = fChainEPICS->GetTree();
+      // if(fTreeEPICS==nullptr) fTreeEPICS = fChainEPICS->GetTree();
    }
+
+   // if(fIsDebug){
+   //    std::cout << "Tree: TSLeft, addr = " << fTreeLeft  << ", NEntries = " << fNEntriesLeft  << std::endl;
+   //    std::cout << "Tree: TSsbs , addr = " << fTreeSBS   << ", NEntries = " << fNEntriesSBS   << std::endl;
+   //    std::cout << "Tree: E     , addr = " << fTreeEPICS << ", NEntries = " << fNEntriesEPICS << std::endl;
+   // }
+
+   // now set branch addresses so we can fill vectors, histos, etc 
+   // if(!fBranchesSet) SetBranchAddresses();  
+}
+//______________________________________________________________________________
+int BCMManager::SetTrees(){
+   // finished loading files, now set the trees
+   // if(fTreeLeft==nullptr) fTreeLeft = fChainLeft->GetTree();
+   // if(fTreeSBS==nullptr)  fTreeSBS  = fChainSBS->GetTree();
+   // if(fEnableEPICS && fTreeEPICS==nullptr) fTreeEPICS = fChainEPICS->GetTree();
+
+   // TObjArray *fileElements = fChain->GetListOfFiles();
+   // TIter next(fileElements);
+   // TChainElement *chEl=0;
+
+   // for(int i=0;i<3;i++){
+   //    chEl = (TChainElement *)next(); 
+   //    TFile f(chEl->GetTitle());
+   //    if(i==0) fChainLeft  = (TChain *)f.Get("TSLeft"); 
+   //    if(i==1) fChainSBS   = (TChain *)f.Get("TSsbs"); 
+   //    if(i==2) fChainEPICS = (TChain *)f.Get("E"); 
+   // } 
+
+   int fail=0;
+
+   TObjArray *feLeft = fChainLeft->GetListOfFiles();
+   TIter nextLeft(feLeft); 
+   TChainElement *eLeft = (TChainElement *)nextLeft(); 
+   if(eLeft){
+      feLeft->Print();
+      TFile fileLeft(eLeft->GetTitle()); 
+      fChainLeft = (TChain *)fileLeft.Get("TSLeft"); 
+   }else{
+      std::cout << "[BCMManager::SetTrees]: Invalid TChainElement for Left arm! " << std::endl;
+      fail++;
+   } 
+
+   TObjArray *feSBS = fChainSBS->GetListOfFiles();
+   TIter nextSBS(feSBS); 
+   TChainElement *eSBS = (TChainElement *)nextSBS(); 
+   if(eSBS){
+      feSBS->Print();
+      TFile fileSBS(eSBS->GetTitle()); 
+      fChainSBS = (TChain *)fileSBS.Get("TSsbs"); 
+   }else{
+      std::cout << "[BCMManager::SetTrees]: Invalid TChainElement for SBS arm! " << std::endl;
+      fail++;
+   } 
+
+   TObjArray *feEPICS = fChainEPICS->GetListOfFiles();
+   TIter nextEPICS(feEPICS); 
+   TChainElement *eEPICS = (TChainElement *)nextEPICS(); 
+   if(eEPICS){
+      feEPICS->Print();
+      TFile fileEPICS(eEPICS->GetTitle()); 
+      fChainEPICS = (TChain *)fileEPICS.Get("E"); 
+   }else{
+      std::cout << "[BCMManager::SetTrees]: Invalid TChainElement for E arm! " << std::endl;
+      fail++;
+   } 
+
+   if(fail>0) return fail; 
+
+   std::cout << __LINE__ << std::endl;
+   fNEntriesLeft  = fChainLeft->GetEntries();
+   fNEntriesSBS   = fChainSBS->GetEntries();
+   fNEntriesEPICS = fChainEPICS->GetEntries();
+   std::cout << __LINE__ << std::endl;
+
+   fTreeLeft  = fChainLeft->GetTree();
+   fTreeSBS   = fChainSBS->GetTree();
+   fTreeEPICS = fChainEPICS->GetTree();
+   std::cout << __LINE__ << std::endl;
 
    if(fIsDebug){
       std::cout << "Tree: TSLeft, addr = " << fTreeLeft  << ", NEntries = " << fNEntriesLeft  << std::endl;
@@ -119,11 +206,12 @@ void BCMPlotter::LoadFile(const char *filePath){
       std::cout << "Tree: E     , addr = " << fTreeEPICS << ", NEntries = " << fNEntriesEPICS << std::endl;
    }
 
-   // now set branch addresses so we can fill vectors, histos, etc 
-   SetBranchAddresses();  
+   if(!fBranchesSet) SetBranchAddresses();  
+
+   return fail;
 }
 //______________________________________________________________________________
-int BCMPlotter::SetBranchAddresses(){
+int BCMManager::SetBranchAddresses(){
    // LHRS arm
    fTreeLeft->SetBranchAddress("Left.bcm.u1.cnt"    ,&fu1c_left   );
    fTreeLeft->SetBranchAddress("Left.bcm.u1.rate"   ,&fu1r_left   );
@@ -168,10 +256,11 @@ int BCMPlotter::SetBranchAddresses(){
       fTreeEPICS->SetBranchAddress("IBC1H04CRCUR2"  ,&fIBC1H04CRCUR2  );
       fTreeEPICS->SetBranchAddress("timestamp"      ,&fEPICSTime      );
    }
+   fBranchesSet = true; 
    return 0;
 }
 //______________________________________________________________________________
-TH1F * BCMPlotter::GetTH1F(const char *h_name,const char *h_range,
+TH1F * BCMManager::GetTH1F(const char *h_name,const char *h_range,
                            const char *arm,const char *var_name,const char *type){
    // construct a TH1F 
    std::string armName   = arm;
@@ -192,7 +281,7 @@ TH1F * BCMPlotter::GetTH1F(const char *h_name,const char *h_range,
          fTreeSBS->Project(hNameAndRange,fullVarName,"","");
       } 
    }else{
-      std::cout << "[BCMPlotter::GetTH1F]: ERROR!  Invalid variable name = " << varName << std::endl;
+      std::cout << "[BCMManager::GetTH1F]: ERROR!  Invalid variable name = " << varName << std::endl;
       return 0;
    }
 
@@ -201,7 +290,7 @@ TH1F * BCMPlotter::GetTH1F(const char *h_name,const char *h_range,
    return h; 
 }
 //______________________________________________________________________________
-TH2F * BCMPlotter::GetTH2F(const char *h_name,const char *h_range,
+TH2F * BCMManager::GetTH2F(const char *h_name,const char *h_range,
                            const char *arm,const char *xAxis,const char *yAxis,const char *type){
 
    // construct a TH1F 
@@ -233,7 +322,7 @@ TH2F * BCMPlotter::GetTH2F(const char *h_name,const char *h_range,
          fTreeSBS->Project(hNameAndRange,fullVarName,"","");
       } 
    }else{
-      std::cout << "[BCMPlotter::GetTH2F]: ERROR!  Invalid variable name = " << varName << std::endl;
+      std::cout << "[BCMManager::GetTH2F]: ERROR!  Invalid variable name = " << varName << std::endl;
       return 0;
    }
 
@@ -242,7 +331,7 @@ TH2F * BCMPlotter::GetTH2F(const char *h_name,const char *h_range,
    return h;
 }
 //______________________________________________________________________________
-int BCMPlotter::CheckVariable(const char *arm,const char *var){
+int BCMManager::CheckVariable(const char *arm,const char *var){
    // make sure the variable exists
    std::string armName = arm;
    std::string varName = var; 
@@ -255,18 +344,18 @@ int BCMPlotter::CheckVariable(const char *arm,const char *var){
          if(varName.compare(fVarName[i])==0) found++;           
       }
    }else{
-      std::cout << "[BCMPlotter::CheckVariable]: ERROR! Invalid arm name = " << armName << std::endl;
+      std::cout << "[BCMManager::CheckVariable]: ERROR! Invalid arm name = " << armName << std::endl;
       return 0;
    }
 
    if(found!=1){
-      std::cout << "[BCMPlotter::CheckVariable]: ERROR!  Invalid variable name = " << varName << std::endl;
+      std::cout << "[BCMManager::CheckVariable]: ERROR!  Invalid variable name = " << varName << std::endl;
    } 
 
    return found;
 }
 //______________________________________________________________________________
-TGraph * BCMPlotter::GetTGraph(const char *arm,const char *xAxis,const char *yAxis,const char *type){
+TGraph * BCMManager::GetTGraph(const char *arm,const char *xAxis,const char *yAxis,const char *type){
    // get a TGraph object 
    std::string ARM = arm; 
    TString xAxisName = Form("%s",xAxis);
@@ -288,13 +377,13 @@ TGraph * BCMPlotter::GetTGraph(const char *arm,const char *xAxis,const char *yAx
    return g; 
 }
 //______________________________________________________________________________
-int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v){
+int BCMManager::GetVector(const char *arm,const char *var,std::vector<double> &v){
    // fill a vector with the variable 
 
    std::string armName = arm;
    std::string varName = var;
 
-   if(fIsDebug) std::cout << "arm = " << arm << ", var = " << var << std::endl;
+   // if(fIsDebug) std::cout << "arm = " << arm << ", var = " << var << std::endl;
 
    int NN=0;
    if(armName.compare("Left")==0) NN = fNEntriesLeft; 
@@ -306,7 +395,8 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
       if(armName.compare("Left")==0){
          fTreeLeft->GetEntry(i);
 	 if(ftime_left_den!=0) time = ftime_left_num/ftime_left_den;
-	 if(varName.compare("time")==0) val = time;
+         if(varName.compare("event")==0)                val = i; 
+	 if(varName.compare("time")==0)                 val = time;
 	 if(varName.compare("Left.bcm.u1.cnt")==0     ) val = fu1c_left;
 	 if(varName.compare("Left.bcm.unew.cnt")==0   ) val = funewc_left;
 	 if(varName.compare("Left.bcm.d1.cnt")==0     ) val = fd1c_left;
@@ -324,7 +414,8 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
       }else if(armName.compare("sbs")==0){
          fTreeSBS->GetEntry(i);
 	 if(ftime_sbs_den!=0) time = ftime_sbs_num/ftime_sbs_den;
-	 if(varName.compare("time")==0) val = time;
+         if(varName.compare("event")==0)               val = i; 
+	 if(varName.compare("time")==0)                val = time;
 	 if(varName.compare("sbs.bcm.u1.cnt")==0     ) val = fu1c_sbs;
 	 if(varName.compare("sbs.bcm.unew.cnt")==0   ) val = funewc_sbs;
 	 if(varName.compare("sbs.bcm.d1.cnt")==0     ) val = fd1c_sbs;
@@ -339,9 +430,9 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
 	 if(varName.compare("sbs.bcm.d10.rate")==0   ) val = fd10r_sbs;
 	 if(varName.compare("sbs.bcm.dnew.rate")==0  ) val = fdnewr_sbs;
 	 if(varName.compare("sbs.bcm.unser.rate")==0 ) val = funserr_sbs;
-	 // std::cout << Form("%d val = %.3lf, u1r = %.3lf, d1r = %.3lf",i,val,fu1r_sbs,fd1r_sbs) << std::endl;
       }else if(armName.compare("E")==0){
 	 fTreeEPICS->GetEntry(i); 
+         if(varName.compare("event")==0)           val = i; 
 	 if(varName.compare("time")==0)            val = fEPICSTime; 
 	 if(varName.compare("IPM1H04A.XPOS")==0)   val = fIPM1H04A_XPOS; 
 	 if(varName.compare("IPM1H04A.YPOS")==0)   val = fIPM1H04A_YPOS; 
@@ -350,10 +441,61 @@ int BCMPlotter::GetVector(const char *arm,const char *var,std::vector<double> &v
 	 if(varName.compare("hac_bcm_average")==0) val = fhac_bcm_average; 
 	 if(varName.compare("IBC1H04CRCUR2")==0)   val = fIBC1H04CRCUR2; 
       }
-      if(fIsDebug) std::cout << Form("%d time = %.3lf, u1r = %.3lf, d1r = %.3lf",i,time,fu1r_sbs,fd1r_sbs) << std::endl;
       v.push_back(val);
       val = 0;
       time = 0;
    }
    return 0;
+}
+//______________________________________________________________________________
+void BCMManager::Print(const char *arm){
+
+   std::cout << "============ ARM: " << arm << " ============" << std::endl;
+
+   std::string armName = arm; 
+
+   int NN=0;
+   if(armName.compare("Left")==0) NN = fNEntriesLeft; 
+   if(armName.compare("sbs")==0)  NN = fNEntriesSBS; 
+   if(armName.compare("E")==0)    NN = fNEntriesEPICS; 
+
+   double time=0;
+   for(int i=0;i<NN;i++){
+      if(armName.compare("Left")==0){
+         fTreeLeft->GetEntry(i);
+	 if(ftime_left_den!=0) time = ftime_left_num/ftime_left_den;
+	 std::cout << Form("event %d, ",i) 
+	           << Form("time = %.3lf, ",time) 
+	           << Form("u1r = %.3lf, ",fu1r_left) 
+	           << Form("unewr = %.3lf, ",funewr_left)
+	           << Form("dnewr = %.3lf, ",fdnewr_left) 
+	           << Form("d1r = %.3lf, ",fd1r_left)
+	           << Form("d3r = %.3lf, ",fd3r_left)
+	           << Form("d10r = %.3lf, ",fd10r_left)
+	           << Form("unserr = %.3lf, ",funserr_left) << std::endl;
+      }else if(armName.compare("sbs")==0){
+         fTreeSBS->GetEntry(i);
+	 if(ftime_sbs_den!=0) time = ftime_sbs_num/ftime_sbs_den;
+	 std::cout << Form("event %d, ",i) 
+	           << Form("time = %.3lf, ",time) 
+	           << Form("u1r = %.3lf, ",fu1r_sbs) 
+	           << Form("unewr = %.3lf, ",funewr_sbs)
+	           << Form("dnewr = %.3lf, ",fdnewr_sbs) 
+	           << Form("d1r = %.3lf, ",fd1r_sbs)
+	           << Form("d3r = %.3lf, ",fd3r_sbs)
+	           << Form("d10r = %.3lf, ",fd10r_sbs)
+	           << Form("unserr = %.3lf, ",funserr_sbs) << std::endl;
+      }else if(armName.compare("E")==0){
+	 fTreeEPICS->GetEntry(i); 
+	 std::cout << Form("event %d, ",i) 
+	           << Form("time = %.3lf, ",fEPICSTime) 
+	           << Form("IPM1H04A_XPOS = %.3lf, ",fIPM1H04A_XPOS) 
+	           << Form("IPM1H04A_YPOS = %.3lf, ",fIPM1H04A_YPOS) 
+	           << Form("IPM1H04E_XPOS = %.3lf, ",fIPM1H04E_XPOS) 
+	           << Form("IPM1H04E_YPOS = %.3lf, ",fIPM1H04E_YPOS) 
+	           << Form("hac_bcm_average = %.3lf, ",fhac_bcm_average) 
+	           << Form("IPM1H04CRCUR2 = %.3lf, ",fIBC1H04CRCUR2) << std::endl; 
+      }
+   }
+
 }

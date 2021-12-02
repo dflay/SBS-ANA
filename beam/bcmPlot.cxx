@@ -11,11 +11,11 @@
 #include "TLine.h"
 
 #include "./include/codaRun.h"
-#include "./src/BCMPlotter.cxx"
+#include "./src/BCMManager.cxx"
 #include "./src/bcmUtilities.cxx"
 #include "./src/Graph.cxx"
 
-int bcmPlot(){
+int bcmPlot(const char *runPath){
 
    // settings 
    bool logScale   = false;
@@ -26,34 +26,40 @@ int bcmPlot(){
 
    TString prefix;
    std::vector<codaRun_t> runList;  
-   rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList);
+   rc = bcm_util::LoadRuns(runPath,prefix,runList);
    if(rc!=0) return 1; 
 
-   BCMPlotter *myPlotter = new BCMPlotter();
-   // myPlotter->SetDebug();
-   myPlotter->EnableEPICS(); 
+   BCMManager *mgr = new BCMManager();
+   mgr->SetDebug();
+   mgr->EnableEPICS();
 
    TString filePath;  
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
       filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
                       prefix.Data(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
-      myPlotter->LoadFile(filePath);
-   } 
+      mgr->LoadFile(filePath);
+   }
+
+   rc = mgr->SetTrees();
+   if(rc!=0) return rc; 
+
+   mgr->Print("E");  
 
    const int N = 7; 
    TString varName[N] = {"u1","unew","unser","dnew","d1","d3","d10"};
+   TString xAxis      = Form("event"); 
 
    // create TGraphs 
 
    TGraph **g = new TGraph*[N]; 
 
    for(int i=0;i<N;i++){
-      g[i] = myPlotter->GetTGraph("sbs","time",varName[i],"rate");
+      g[i] = mgr->GetTGraph("sbs",xAxis.Data(),varName[i],"rate");
       graph_df::SetParameters(g[i],20,kBlack); 
    }
 
-   TGraph *gEPICSCurrent = myPlotter->GetTGraph("E","time","IBC1H04CRCUR2",""); 
+   TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2",""); 
    gEPICSCurrent->SetMarkerStyle(20);
 
    TCanvas *c1a = new TCanvas("c1a","BCM Check",1200,800);
@@ -62,8 +68,12 @@ int bcmPlot(){
    TCanvas *c1b = new TCanvas("c1b","BCM Check",1200,800);
    c1b->Divide(2,2);
 
-   TString Title,yAxisTitle;
-   TString xAxisTitle = Form("Time [sec]"); 
+   TString Title,xAxisTitle,yAxisTitle;
+   if(xAxis=="time"){
+      xAxisTitle = Form("%s [sec]",xAxis.Data());
+   }else{
+      xAxisTitle = Form("%s",xAxis.Data());
+   }
 
    for(int i=0;i<N/2;i++){
       c1a->cd(i+1);
