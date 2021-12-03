@@ -60,7 +60,7 @@ int unserProcessCuts(const char *runPath,const char *cutPath,const char *outpath
 	                cutList[i].low,cutList[i].high,cutList[i].group,"unser.rate",mean,stdev) << std::endl;
       // save results
       M = ct.size(); 
-      // theTime       = math_df::GetMean<double>(time); 
+      // theTime       = math_df::GetMean<double>(ct); 
       theTime       = ct[M-1]; // use last time as the timestamp  
       pt.dev        = cutList[i].dev; 
       pt.beam_state = cutList[i].beam_state; 
