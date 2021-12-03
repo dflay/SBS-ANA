@@ -5,7 +5,8 @@ BCMManager::BCMManager(const char *filePath,bool isDebug){
    fEvtCntrLeft   = 0;  
    fEvtCntrSBS    = 0;  
    fEvtCntrEPICS  = 0; 
-   fLastTime      = 0; 
+   fLastTimeLeft  = 0; 
+   fLastTimeSBS   = 0; 
 
    std::string path = filePath; 
    if(path.compare("NONE")!=0){
@@ -25,6 +26,8 @@ void BCMManager::Clear(){
    fEvtCntrLeft  = 0;
    fEvtCntrSBS   = 0;
    fEvtCntrEPICS = 0;
+   fLastTimeLeft = 0; 
+   fLastTimeSBS  = 0; 
 }
 //______________________________________________________________________________
 void BCMManager::LoadFile(const char *filePath,int runNumber){
@@ -54,7 +57,7 @@ void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int 
 
    TChain *ch = new TChain(treeName); 
    ch->Add(filePath);
-   int NL = ch->GetEntries(); 
+   int NN = ch->GetEntries(); 
    TTree *aTree = ch->GetTree();
    aTree->SetBranchAddress(Form("%s.bcm.unser.cnt" ,arm.c_str()),&unser_cnt );
    aTree->SetBranchAddress(Form("%s.bcm.unser.rate",arm.c_str()),&unser_rate);
@@ -80,15 +83,19 @@ void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int 
 
    scalerData_t pt; 
 
-   for(int i=0;i<NL;i++){
+   for(int i=0;i<NN;i++){
       aTree->GetEntry(i);
-      time = 0;  
-      if(time_den!=0) time = time_num/time_den;   
+      if(time_den!=0){
+	 time = time_num/time_den; 
+      }else{
+	 time = 0;  
+      } 
+      pt.time_num    = time_num;  
+      pt.time_den    = time_den;  
       pt.arm         = arm; 
       pt.runNumber   = runNumber; 
       pt.unserRate   = unser_rate;  
       pt.unserCounts = unser_cnt;  
-      pt.time        = fLastTime + time; 
       pt.u1Rate      = u1_rate;  
       pt.u1Counts    = u1_cnt;  
       pt.unewRate    = unew_rate;  
@@ -102,20 +109,44 @@ void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int 
       pt.d10Rate     = d10_rate;  
       pt.d10Counts   = d10_cnt;  
       if(arm.compare("Left")==0){
+	 pt.time  = fLastTimeLeft + time; 
 	 pt.event = fEvtCntrLeft; 
 	 fLeft.push_back(pt); 
 	 fEvtCntrLeft++;
       }else if(arm.compare("sbs")==0){
+	 pt.time  = fLastTimeSBS + time; 
 	 pt.event = fEvtCntrSBS; 
 	 fSBS.push_back(pt); 
 	 fEvtCntrSBS++;
       }
    }
-   
-   fLastTime = pt.time; 
+  
+   // track the last time registered 
+   double lastTime=0; 
+   if(arm.compare("Left")==0){
+      if( IsBad(fLeft[NN-1].time) ){
+         fLeft[NN-1].time = 0; 
+	 std::cout << "[BCMManager::LoadDataFromTree]: WARNING! arm = " << arm << ", bad last time! Setting to zero." << std::endl;
+      }
+      fLastTimeLeft = fLeft[NN-1].time;
+      lastTime = fLastTimeLeft; 
+   }else if(arm.compare("SBS")==0){
+      if( IsBad(fSBS[NN-1].time) ){
+	 std::cout << "[BCMManager::LoadDataFromTree]: WARNING! arm = " << arm << ", bad last time! Setting to zero." << std::endl;
+         fSBS[NN-1].time = 0; 
+      } 
+      fLastTimeSBS  = fSBS[NN-1].time;
+      lastTime      = fLastTimeSBS; 
+   }
+
+   std::cout << "The last time is: " << lastTime << std::endl;
  
    delete aTree; 
    delete ch; 
+}
+//______________________________________________________________________________
+bool BCMManager::IsBad(double v){
+   return std::isinf(v) || std::isnan(v); 
 }
 //______________________________________________________________________________
 void BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
@@ -216,11 +247,14 @@ int BCMManager::GetVector(const char *arm,const char *var,std::vector<double> &v
    if(armName.compare("sbs")==0)  NN = fSBS.size(); 
    if(armName.compare("E")==0)    NN = fEPICS.size(); 
 
-   double val=0,time=0;
+   double val=0;
    for(int i=0;i<NN;i++){
+      val = 0;
       if(armName.compare("Left")==0){
 	 if(varName.compare("event")==0)       val = fLeft[i].event; 
 	 if(varName.compare("time")==0)        val = fLeft[i].time; 
+	 if(varName.compare("time_num")==0)    val = fLeft[i].time_num; 
+	 if(varName.compare("time_den")==0)    val = fLeft[i].time_den; 
 	 if(varName.compare("u1.cnt")==0     ) val = fLeft[i].u1Counts; 
 	 if(varName.compare("unew.cnt")==0   ) val = fLeft[i].unewCounts; 
 	 if(varName.compare("d1.cnt")==0     ) val = fLeft[i].d1Counts; 
@@ -238,6 +272,8 @@ int BCMManager::GetVector(const char *arm,const char *var,std::vector<double> &v
       }else if(armName.compare("sbs")==0){
        	 if(varName.compare("event")==0)       val = fSBS[i].event; 
 	 if(varName.compare("time")==0)        val = fSBS[i].time; 
+	 if(varName.compare("time_num")==0)    val = fSBS[i].time_num; 
+	 if(varName.compare("time_den")==0)    val = fSBS[i].time_den; 
 	 if(varName.compare("u1.cnt")==0     ) val = fSBS[i].u1Counts; 
 	 if(varName.compare("unew.cnt")==0   ) val = fSBS[i].unewCounts; 
 	 if(varName.compare("d1.cnt")==0     ) val = fSBS[i].d1Counts; 
@@ -263,8 +299,6 @@ int BCMManager::GetVector(const char *arm,const char *var,std::vector<double> &v
 	 if(varName.compare("IBC1H04CRCUR2")==0)   val = fEPICS[i].IBC1H04CRCUR2; 
       }
       v.push_back(val);
-      val = 0;
-      time = 0;
    }
   
    int NV = v.size();
@@ -286,39 +320,40 @@ void BCMManager::Print(const char *arm){
 
    for(int i=0;i<N;i++){
       if(ARM.compare("Left")==0){
-	 std::cout << Form("event %03d, "       ,fLeft[i].event) 
-	           << Form("run %05d, "         ,fLeft[i].runNumber) 
-	           << Form("time = %.3lf, "     ,fLeft[i].time) 
-	           << Form("unser rate = %.3lf ",fLeft[i].unserRate) 
-	           << Form("u1 rate = %.3lf "   ,fLeft[i].u1Rate) 
-	           << Form("unew rate = %.3lf " ,fLeft[i].unewRate) 
-	           << Form("dnew rate = %.3lf " ,fLeft[i].dnewRate) 
-	           << Form("d1 rate = %.3lf "   ,fLeft[i].d1Rate) 
-	           << Form("d3 rate = %.3lf "   ,fLeft[i].d3Rate) 
-	           << Form("d10 rate = %.3lf "  ,fLeft[i].d10Rate) << std::endl;
+	 PrintScaler(fLeft[i]); 
       }else if(ARM.compare("sbs")==0){
-	 std::cout << Form("event %03d, "       ,fSBS[i].event) 
-	           << Form("run %05d, "         ,fSBS[i].runNumber) 
-	           << Form("time = %.3lf, "     ,fSBS[i].time) 
-	           << Form("unser rate = %.3lf ",fSBS[i].unserRate) 
-	           << Form("u1 rate = %.3lf "   ,fSBS[i].u1Rate) 
-	           << Form("unew rate = %.3lf " ,fSBS[i].unewRate) 
-	           << Form("dnew rate = %.3lf " ,fSBS[i].dnewRate) 
-	           << Form("d1 rate = %.3lf "   ,fSBS[i].d1Rate) 
-	           << Form("d3 rate = %.3lf "   ,fSBS[i].d3Rate) 
-	           << Form("d10 rate = %.3lf "  ,fSBS[i].d10Rate) << std::endl;
+	 PrintScaler(fSBS[i]); 
       }else if(ARM.compare("E")==0){
-	 std::cout << Form("event %03d, "             ,fEPICS[i].event) 
-	           << Form("run %05d, "               ,fEPICS[i].runNumber) 
-	           << Form("time = %.3lf, "           ,fEPICS[i].time) 
-	           << Form("IPM1H04A_XPOS = %.3lf, "  ,fEPICS[i].IPM1H04A_XPOS) 
-	           << Form("IPM1H04A_YPOS = %.3lf, "  ,fEPICS[i].IPM1H04A_YPOS) 
-	           << Form("IPM1H04E_XPOS = %.3lf, "  ,fEPICS[i].IPM1H04E_XPOS) 
-	           << Form("IPM1H04E_YPOS = %.3lf, "  ,fEPICS[i].IPM1H04E_YPOS) 
-	           << Form("hac_bcm_average = %.3lf, ",fEPICS[i].hac_bcm_average) 
-	           << Form("IPM1H04CRCUR2 = %.3lf, "  ,fEPICS[i].IBC1H04CRCUR2) << std::endl; 
+	 PrintEPICS(fEPICS[i]); 
       } 
    }
 
+}
+//______________________________________________________________________________
+void BCMManager::PrintScaler(scalerData_t data){
+   std::cout << Form("event %03d, "       ,data.event) 
+             << Form("run %05d, "         ,data.runNumber) 
+             << Form("time = %.3lf, "     ,data.time) 
+             << Form("time_num = %.3lf, " ,data.time_num) 
+             << Form("time_den = %.3lf, " ,data.time_den) 
+             << Form("unser rate = %.3lf ",data.unserRate) 
+             << Form("u1 rate = %.3lf "   ,data.u1Rate) 
+             << Form("unew rate = %.3lf " ,data.unewRate) 
+             << Form("dnew rate = %.3lf " ,data.dnewRate) 
+             << Form("d1 rate = %.3lf "   ,data.d1Rate) 
+             << Form("d3 rate = %.3lf "   ,data.d3Rate) 
+             << Form("d10 rate = %.3lf "  ,data.d10Rate) << std::endl;
+}
+//______________________________________________________________________________
+void BCMManager::PrintEPICS(epicsData_t data){
+   std::cout << Form("event %03d, "             ,data.event) 
+             << Form("run %05d, "               ,data.runNumber) 
+             << Form("time = %.3lf, "           ,data.time) 
+             << Form("IPM1H04A_XPOS = %.3lf, "  ,data.IPM1H04A_XPOS) 
+             << Form("IPM1H04A_YPOS = %.3lf, "  ,data.IPM1H04A_YPOS) 
+             << Form("IPM1H04E_XPOS = %.3lf, "  ,data.IPM1H04E_XPOS) 
+             << Form("IPM1H04E_YPOS = %.3lf, "  ,data.IPM1H04E_YPOS) 
+             << Form("hac_bcm_average = %.3lf, ",data.hac_bcm_average) 
+             << Form("IPM1H04CRCUR2 = %.3lf, "  ,data.IBC1H04CRCUR2) << std::endl; 
 }
 

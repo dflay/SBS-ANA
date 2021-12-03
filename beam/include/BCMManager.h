@@ -26,10 +26,12 @@ class BCMManager {
    private:
       bool fIsDebug; 
       int fEvtCntrLeft,fEvtCntrSBS,fEvtCntrEPICS;
-      double fLastTime; 
+      double fLastTimeLeft,fLastTimeSBS; 
 
       std::vector<scalerData_t> fLeft,fSBS;
-      std::vector<epicsData_t> fEPICS; 
+      std::vector<epicsData_t> fEPICS;
+
+      bool IsBad(double v);  
 
    public: 
       BCMManager(const char *filePath="NONE",bool isDebug=false);
@@ -41,7 +43,10 @@ class BCMManager {
       void LoadFile(const char *filePath,int runNumber=0);
       void LoadDataFromTree(const char *filePath,const char *treeName,int runNumber=0);
       void LoadEPICSDataFromTree(const char *filePath,int runNumber=0);
+
       void Print(const char *arm);
+      void PrintScaler(scalerData_t data); 
+      void PrintEPICS(epicsData_t data); 
 
       int GetVector(const char *arm,const char *var,std::vector<double> &v); 
 
