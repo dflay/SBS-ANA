@@ -81,9 +81,10 @@ namespace bcm_util {
       std::vector<int> group;
       csv->GetColumn_byIndex<int>(2,group);
  
-      std::vector<double> mean,stdev;  
-      csv->GetColumn_byIndex<double>(3,mean);
-      csv->GetColumn_byIndex<double>(4,stdev);
+      std::vector<double> time,mean,stdev;  
+      csv->GetColumn_byIndex<double>(3,time);
+      csv->GetColumn_byIndex<double>(4,mean);
+      csv->GetColumn_byIndex<double>(5,stdev);
      
       const int N = dev.size(); 
       producedVariable_t var; 
@@ -91,6 +92,7 @@ namespace bcm_util {
 	 var.dev        = dev[i];
          var.beam_state = beam_state[i];  
          var.group      = group[i];  
+         var.time       = time[i];  
          var.mean       = mean[i];  
          var.stdev      = stdev[i]; 
 	 data.push_back(var);  
