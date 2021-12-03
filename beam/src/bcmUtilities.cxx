@@ -22,9 +22,46 @@ namespace bcm_util {
       std::cout << "dev:        " << data.dev                 << std::endl;
       std::cout << "beam_state: " << data.beam_state          << std::endl;
       std::cout << "group:      " << data.group               << std::endl;
+      std::cout << "time:       " << Form("%.3lf",data.time)  << std::endl;
       std::cout << "mean:       " << Form("%.3lf",data.mean)  << std::endl;
       std::cout << "stdev:      " << Form("%.3lf",data.stdev) << std::endl;
       std::cout << "----------------------------------------" << std::endl;
+      return 0;
+   }
+   //______________________________________________________________________________
+   int WriteToFile(const char *outpath,std::vector<producedVariable_t> data){
+      // write producedVariable data to file 
+      std::vector<std::string> DEV,BEAM_STATE;
+      std::vector<int> GRP;
+      std::vector<double> MU,SIG,TIME;
+
+      // write results to file
+      const int N = data.size();
+      for(int i=0;i<N;i++){
+	 MU.push_back(data[i].mean);
+	 SIG.push_back(data[i].stdev);
+	 TIME.push_back(data[i].time); 
+	 DEV.push_back(data[i].dev);
+	 BEAM_STATE.push_back(data[i].beam_state);
+	 GRP.push_back(data[i].group);
+      }
+
+      std::string header = "dev,beam_state,group,time,mean,stdev";
+
+      const int NROW = DEV.size();
+      const int NCOL = 6;
+      CSVManager *csv = new CSVManager();
+      csv->InitTable(NROW,NCOL);
+      csv->SetColumn_str(0,DEV);
+      csv->SetColumn_str(1,BEAM_STATE);
+      csv->SetColumn<int>(2,GRP);
+      csv->SetColumn<double>(3,TIME);
+      csv->SetColumn<double>(4,MU);
+      csv->SetColumn<double>(5,SIG);
+      csv->SetHeader(header);
+      csv->WriteFile(outpath);
+
+      delete csv;
       return 0;
    }
    //______________________________________________________________________________
@@ -153,18 +190,26 @@ namespace bcm_util {
       return 0;
    }
    //______________________________________________________________________________
-   void GetStatsWithCuts(std::vector<double> x,std::vector<double> y,
+   int ApplyCuts(double cutLo,double cutHi,std::vector<double> x,std::vector<double> y,std::vector<double> &out){
+      // cuts are applied to the x variable. out has data that passed the cut 
+      const int N = x.size();
+      for(int i=0;i<N;i++){
+	 if(x[i]>cutLo&&x[i]<cutHi) out.push_back(y[i]);
+      }
+      return 0;
+   }
+   //______________________________________________________________________________
+   int GetStatsWithCuts(std::vector<double> x,std::vector<double> y,
 	 double cutLo,double cutHi,double &mean,double &stdev){
       // cuts are applied to the x variable. if true, compute stats on y 
       std::vector<double> Y;
       const int N = x.size();
-
       for(int i=0;i<N;i++){
 	 if(x[i]>cutLo&&x[i]<cutHi) Y.push_back(y[i]);
       }
-
       mean  = math_df::GetMean<double>(Y);
       stdev = math_df::GetStandardDeviation<double>(Y);
+      return 0;
    }
    //______________________________________________________________________________
    int SubtractBaseline(std::vector<producedVariable_t> on,std::vector<producedVariable_t> off, 

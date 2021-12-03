@@ -139,7 +139,7 @@ void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int 
       lastTime      = fLastTimeSBS; 
    }
 
-   std::cout << "The last time is: " << lastTime << std::endl;
+   if(fIsDebug) std::cout << "The last time is: " << lastTime << std::endl;
  
    delete aTree; 
    delete ch; 
