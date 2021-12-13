@@ -12,6 +12,7 @@
 #include "TPad.h"
 #include "TLine.h"
 
+#include "./include/calibCoeff.h"
 #include "./include/codaRun.h"
 #include "./src/ABA.cxx"
 #include "./src/BCMManager.cxx"
@@ -28,12 +29,17 @@ int unserCalibrate(){
    std::vector<std::string> label,path;
    rc = bcm_util::LoadConfigPaths("./input/unser-calib.csv",label,path);
 
-   std::string datapath,outpath_cc;
+   std::string datapath,outpath_cc,fitMin_str,fitMax_str;
    const int NF = label.size();
    for(int i=0;i<NF;i++){
       if(label[i].compare("datapath")==0)   datapath   = path[i];
       if(label[i].compare("outpath_cc")==0) outpath_cc = path[i];
+      if(label[i].compare("fitMin")==0)     fitMin_str = path[i];
+      if(label[i].compare("fitMax")==0)     fitMax_str = path[i];
    }
+
+   double fitMin = std::atof( fitMin_str.c_str() ); 
+   double fitMax = std::atof( fitMax_str.c_str() ); 
 
    std::vector<producedVariable_t> data;
    rc = bcm_util::LoadProducedVariables(datapath.c_str(),data);
@@ -48,7 +54,7 @@ int unserCalibrate(){
    myABA->UseTimeWeight(); 
    myABA->SetVerbosity(1);  
 
-   double argErr=0,mean=0,err=0,stdev=0;
+   double arg=0,argErr=0,mean=0,err=0,stdev=0;
  
    // compute (beam-on) - (beam-off) differences
    int M=0;
@@ -175,8 +181,8 @@ int unserCalibrate(){
 
    // set up fit function 
    const int npar = 2;
-   double min = 0;
-   double max = 150; // in uA   
+   double min = fitMin;
+   double max = fitMax; // in uA   
    TF1 *myFit = new TF1("myFit",myFitFunc,min,max,npar);
    for(int i=0;i<npar;i++) myFit->SetParameter(i,0);
 
@@ -193,7 +199,7 @@ int unserCalibrate(){
    graph_df::SetLabels(g,Title,xAxisTitle,yAxisTitle); 
    graph_df::SetLabelSizes(g,0.05,0.06); 
    g->Draw("ap");
-   g->Fit("myFit","Q"); 
+   g->Fit("myFit","QR"); 
    c1->Update();
 
    TGraphErrors *gr = GetResiduals(myFit,I,uc,ucErr); 
@@ -201,18 +207,33 @@ int unserCalibrate(){
    
    c1->cd(2);
    gr->Draw("alp");
-   graph_df::SetLabels(gr,"Fit Residuals",xAxisTitle,"data - fit) [Hz]"); 
+   graph_df::SetLabels(gr,"Fit Residuals",xAxisTitle,"data - fit [Hz]"); 
    graph_df::SetLabelSizes(gr,0.05,0.06); 
    gr->Draw("alp");
    c1->Update();
 
    // get fit results
-   std::vector<double> par,parErr; 
+   // double arg=0,argErr=0;
+   // std::vector<double> par,parErr; 
+   calibCoeff_t apt; 
    for(int i=0;i<npar;i++){
-      par.push_back( myFit->GetParameter(i) ); 
-      parErr.push_back( myFit->GetParError(i) );
-      std::cout << Form("p[%d] = %.3lf ± %.3lf",i,par[i],parErr[i]) << std::endl; 
+      arg    = myFit->GetParameter(i); 
+      argErr = myFit->GetParError(i);
+      apt.dev = "unser"; 
+      if(i==0){
+	 apt.offset    = arg; 
+	 apt.offsetErr = argErr;
+      }else if(i==1){
+	 apt.slope    = arg; 
+	 apt.slopeErr = argErr;
+      }
+      std::cout << Form("p[%d] = %.3lf ± %.3lf",i,arg,argErr) << std::endl; 
    }
+
+   std::vector<calibCoeff_t> cc; 
+   cc.push_back(apt); 
+
+   bcm_util::WriteToFile_cc(outpath_cc.c_str(),cc);  
 
    return 0;
 }

@@ -1,8 +1,67 @@
 #include "../include/bcmUtilities.h"
 #include "CSVManager.cxx"
 #include "Math.cxx"
+#include "BCMManager.cxx"
 //______________________________________________________________________________
 namespace bcm_util {
+   //______________________________________________________________________________
+   TGraphErrors *GetStatsByRun(std::string var,std::vector<scalerData_t> data){
+      // get stats of var vs run number  
+      int run_prev = data[0].runNumber;
+      std::vector<double> v,RUN,MEAN,STDEV;
+      double mean=0,stdev=0,theRun=0,theValue=0;
+      const int NEV = data.size();
+      for(int i=0;i<NEV;i++){
+	 theRun = data[i].runNumber;
+	 if(var.compare("unser.cnt")==0)     theValue = data[i].unserCounts;
+	 if(var.compare("unser.rate")==0)    theValue = data[i].unserRate;
+	 if(var.compare("unser.current")==0) theValue = data[i].unserCurrent;
+	 if(var.compare("u1.cnt")==0)        theValue = data[i].u1Counts;
+	 if(var.compare("u1.rate")==0)       theValue = data[i].u1Rate;
+	 if(var.compare("u1.current")==0)    theValue = data[i].u1Current;
+	 if(var.compare("unew.cnt")==0)      theValue = data[i].unewCounts;
+	 if(var.compare("unew.rate")==0)     theValue = data[i].unewRate;
+	 if(var.compare("unew.current")==0)  theValue = data[i].unewCurrent;
+	 if(var.compare("d1.cnt")==0)        theValue = data[i].d1Counts;
+	 if(var.compare("d1.rate")==0)       theValue = data[i].d1Rate;
+	 if(var.compare("d1.current")==0)    theValue = data[i].d1Current;
+	 if(var.compare("d3.cnt")==0)        theValue = data[i].d3Counts;
+	 if(var.compare("d3.rate")==0)       theValue = data[i].d3Rate;
+	 if(var.compare("d3.current")==0)    theValue = data[i].d3Current;
+	 if(var.compare("d10.cnt")==0)       theValue = data[i].d3Counts;
+	 if(var.compare("d10.rate")==0)      theValue = data[i].d3Rate;
+	 if(var.compare("d10.current")==0)   theValue = data[i].d3Current;
+	 if(var.compare("dnew.cnt")==0)      theValue = data[i].dnewCounts;
+	 if(var.compare("dnew.rate")==0)     theValue = data[i].dnewRate;
+	 if(var.compare("dnew.current")==0)  theValue = data[i].dnewCurrent;
+	 if(run_prev==theRun){
+	    v.push_back(theValue);
+	 }else{
+	    // new run! compute stats 
+	    mean  = math_df::GetMean<double>(v);
+	    stdev = math_df::GetStandardDeviation<double>(v);
+	    // save results
+	    MEAN.push_back(mean);
+	    STDEV.push_back(stdev);
+	    RUN.push_back(run_prev);
+	    // set up for next event 
+	    v.clear();
+	    // the current value counts for the "next" run that didn't match the previous 
+	    v.push_back(theValue);
+	 }
+	 run_prev = theRun;
+      }
+      // compute stats on the last run  
+      mean  = math_df::GetMean<double>(v);
+      stdev = math_df::GetStandardDeviation<double>(v);
+      // save results
+      MEAN.push_back(mean);
+      STDEV.push_back(stdev);
+      RUN.push_back(theRun);
+      // make TGraphErrors
+      TGraphErrors *g = graph_df::GetTGraphErrors(RUN,MEAN,STDEV);
+      return g;
+   }
    //______________________________________________________________________________
    int GetData(std::string var,std::vector<producedVariable_t> data,std::vector<double> &x,std::vector<double> &dx){
       // pull out the mean and stdev from the produced variable set
@@ -26,6 +85,38 @@ namespace bcm_util {
       std::cout << "mean:       " << Form("%.3lf",data.mean)  << std::endl;
       std::cout << "stdev:      " << Form("%.3lf",data.stdev) << std::endl;
       std::cout << "----------------------------------------" << std::endl;
+      return 0;
+   }
+   //______________________________________________________________________________
+   int WriteToFile_cc(const char *outpath,std::vector<calibCoeff_t> data){
+      // write the calibration coefficients to file
+      const int NROW = data.size();
+      const int NCOL = 5;
+      std::vector<std::string> dev;
+      std::vector<double> offset,offsetErr; 
+      std::vector<double> gain,gainErr; 
+      for(int i=0;i<NROW;i++){
+	 dev.push_back( data[i].dev ); 
+	 offset.push_back( data[i].offset ); 
+	 offsetErr.push_back( data[i].offsetErr ); 
+	 gain.push_back( data[i].slope ); 
+	 gainErr.push_back( data[i].slopeErr ); 
+      } 
+
+      std::string header = "dev,offset,offsetErr,gain,gainErr";
+ 
+      CSVManager *csv = new CSVManager(); 
+      csv->InitTable(NROW,NCOL); 
+      csv->SetColumn_str(0,dev); 
+      csv->SetColumn<double>(1,offset);  
+      csv->SetColumn<double>(2,offsetErr);  
+      csv->SetColumn<double>(3,gain);  
+      csv->SetColumn<double>(4,gainErr); 
+      csv->SetHeader(header); 
+      csv->WriteFile(outpath); 
+
+      delete csv; 
+ 
       return 0;
    }
    //______________________________________________________________________________

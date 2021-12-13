@@ -1,16 +1,21 @@
 #include "../include/BCMManager.h"
 //______________________________________________________________________________
-BCMManager::BCMManager(const char *filePath,bool isDebug){
+BCMManager::BCMManager(const char *filePath,bool isDebug,bool calculateCurrent,const char *ccFilePath){
    fIsDebug       = isDebug; 
+   fCalculateCurrent = calculateCurrent;  
    fEvtCntrLeft   = 0;  
    fEvtCntrSBS    = 0;  
    fEvtCntrEPICS  = 0; 
    fLastTimeLeft  = 0; 
-   fLastTimeSBS   = 0; 
+   fLastTimeSBS   = 0;
 
    std::string path = filePath; 
    if(path.compare("NONE")!=0){
       LoadFile(filePath);
+   }
+
+   if(fCalculateCurrent){
+      LoadCalibrationCoefficients(ccFilePath); 
    }
  
 }
@@ -107,7 +112,10 @@ void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int 
       pt.d3Rate      = d3_rate;  
       pt.d3Counts    = d3_cnt;  
       pt.d10Rate     = d10_rate;  
-      pt.d10Counts   = d10_cnt;  
+      pt.d10Counts   = d10_cnt; 
+      if(fCalculateCurrent){
+	 ApplyCalibrationCoeff(pt);
+      }
       if(arm.compare("Left")==0){
 	 pt.time  = fLastTimeLeft + time; 
 	 pt.event = fEvtCntrLeft; 
@@ -143,6 +151,118 @@ void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int 
  
    delete aTree; 
    delete ch; 
+}
+//______________________________________________________________________________
+int BCMManager::LoadCalibrationCoefficients(const char *filePath){
+   CSVManager *csv = new CSVManager();
+   csv->ReadFile(filePath,true); 
+
+   std::vector<std::string> dev; 
+   std::vector<double> ped,pedErr,offset,offsetErr,gain,gainErr;
+
+   csv->GetColumn_byName_str("dev",dev); 
+   csv->GetColumn_byName<double>("pedestal_Hz"   ,ped); 
+   csv->GetColumn_byName<double>("pedestalErr_Hz",pedErr); 
+   csv->GetColumn_byName<double>("offset_Hz"     ,offset); 
+   csv->GetColumn_byName<double>("offsetErr_Hz"  ,offsetErr); 
+   csv->GetColumn_byName<double>("gain_HzuA"     ,gain); 
+   csv->GetColumn_byName<double>("gainErr_HzuA"  ,gainErr); 
+
+   calibCoeff_t cc; 
+   const int ND = dev.size();
+   for(int i=0;i<ND;i++){
+      cc.dev         = dev[i];
+      cc.pedestal    = ped[i];  
+      cc.pedestalErr = pedErr[i];  
+      cc.offset      = offset[i];  
+      cc.offsetErr   = offsetErr[i];  
+      cc.slope       = gain[i];  
+      cc.slopeErr    = gainErr[i];  
+      fCC.push_back(cc); 
+   }
+   delete csv;
+   return 0; 
+}
+//______________________________________________________________________________
+int BCMManager::ApplyCalibrationCoeff(scalerData_t &data){
+   // apply calibration coefficients to all data
+   std::vector<std::string> dev;
+   dev.push_back("unser"); 
+   dev.push_back("u1"); 
+   dev.push_back("unew"); 
+   dev.push_back("d1"); 
+   dev.push_back("d3"); 
+   dev.push_back("d10"); 
+   dev.push_back("dnew");
+
+   double PED=0,OFFSET=0,GAIN=0;
+   std::vector<double> v,dv;  
+
+   int rc=0; // if return code = 0, we found the calibration coefficients, apply them 
+ 
+   const int ND = dev.size();
+   for(int i=0;i<ND;i++){
+      rc = GetCalibrationCoeff(dev[i],v,dv);
+      PED = v[0]; OFFSET = v[1]; GAIN = v[2];
+      if(rc==0){
+	 if(dev[i].compare("unser")==0){
+	    data.unserCurrent = (data.unserRate - PED - OFFSET)/GAIN;
+	 }else if(dev[i].compare("u1")==0){
+	    data.u1Current = (data.u1Rate - PED - OFFSET)/GAIN;
+	 }else if(dev[i].compare("unew")==0){
+	    data.unewCurrent = (data.unewRate - PED - OFFSET)/GAIN;
+	 }else if(dev[i].compare("d1")==0){
+	    data.d1Current = (data.d1Rate - PED - OFFSET)/GAIN;
+	 }else if(dev[i].compare("d3")==0){
+	    data.d3Current = (data.d3Rate - PED - OFFSET)/GAIN;
+	 }else if(dev[i].compare("d10")==0){
+	    data.d10Current = (data.d10Rate - PED - OFFSET)/GAIN;
+	 }else if(dev[i].compare("dnew")==0){
+	    data.dnewCurrent = (data.dnewRate - PED - OFFSET)/GAIN;
+	 }
+      }
+      // set up for next device 
+      v.clear(); dv.clear(); 
+   } 
+   return 0;
+}
+//______________________________________________________________________________
+int BCMManager::GetCalibrationCoeff(std::string dev,std::vector<double> &v,std::vector<double> &dv){
+   // get calibration coefficients by device
+   int rc=0;  
+   const int N = fCC.size();
+   for(int i=0;i<N;i++){
+      if(dev.compare(fCC[i].dev)==0){
+	 v.push_back(fCC[i].pedestal);
+	 v.push_back(fCC[i].offset);  
+	 v.push_back(fCC[i].slope);  
+	 dv.push_back(fCC[i].pedestalErr);
+	 dv.push_back(fCC[i].offsetErr);  
+	 dv.push_back(fCC[i].slopeErr);  
+      }
+   }
+   // check if we found data
+   int NV = v.size();
+   if(NV==0){
+      std::cout << "[BCMManager::GetCalibrationCoeff]: WARNING! No calibration coefficients for device = " << dev << "! "; 
+      std::cout << "Defaulting to ped = 0, offset = 0, gain = 1" << std::endl;
+      v.push_back(0);
+      v.push_back(0);
+      v.push_back(1);
+      dv.push_back(0);
+      dv.push_back(0);
+      dv.push_back(0);
+      rc = 1;
+   }
+   // check gain value (avoid divide by zero error) 
+   if(v[2]==0){
+      std::cout << "[BCMManager::GetCalibrationCoeff]: WARNING! Gain = 0 for device = " << dev << "! ";
+      std::cout << "Setting to 1." << std::endl;
+      v[2] = 1; 
+      dv[2] = 0; 
+      rc = 1;
+   }
+   return rc;
 }
 //______________________________________________________________________________
 bool BCMManager::IsBad(double v){
@@ -234,6 +354,33 @@ TGraph * BCMManager::GetTGraph(const char *arm,const char *xAxis,const char *yAx
    return g; 
 }
 //______________________________________________________________________________
+int BCMManager::GetVector_scaler(const char *arm,std::vector<scalerData_t> &data){
+   // return a vector of the scalerData 
+   std::string armName = arm; 
+ 
+   int NN=0;
+   if(armName.compare("Left")==0) NN = fLeft.size(); 
+   if(armName.compare("sbs")==0)  NN = fSBS.size(); 
+
+   for(int i=0;i<NN;i++){
+      if(armName.compare("Left")==0){
+	 data.push_back(fLeft[i]); 
+      }else if(armName.compare("sbs")==0){
+	 data.push_back(fSBS[i]); 
+      }
+   } 
+   return 0;
+}
+//______________________________________________________________________________
+int BCMManager::GetVector_epics(std::vector<epicsData_t> &data){
+   // return a vector of the epicsData 
+   int NN = fEPICS.size();
+   for(int i=0;i<NN;i++){
+      data.push_back(fEPICS[i]); 
+   } 
+   return 0;
+}
+//______________________________________________________________________________
 int BCMManager::GetVector(const char *arm,const char *var,std::vector<double> &v){
    // fill a vector with the variable 
 
@@ -251,43 +398,57 @@ int BCMManager::GetVector(const char *arm,const char *var,std::vector<double> &v
    for(int i=0;i<NN;i++){
       val = 0;
       if(armName.compare("Left")==0){
-	 if(varName.compare("event")==0)       val = fLeft[i].event; 
-	 if(varName.compare("time")==0)        val = fLeft[i].time; 
-	 if(varName.compare("time_num")==0)    val = fLeft[i].time_num; 
-	 if(varName.compare("time_den")==0)    val = fLeft[i].time_den; 
-	 if(varName.compare("u1.cnt")==0     ) val = fLeft[i].u1Counts; 
-	 if(varName.compare("unew.cnt")==0   ) val = fLeft[i].unewCounts; 
-	 if(varName.compare("d1.cnt")==0     ) val = fLeft[i].d1Counts; 
-	 if(varName.compare("d3.cnt")==0     ) val = fLeft[i].d3Counts; 
-	 if(varName.compare("d10.cnt")==0    ) val = fLeft[i].d10Counts;
-	 if(varName.compare("dnew.cnt")==0   ) val = fLeft[i].dnewCounts; 
-	 if(varName.compare("unser.cnt")==0  ) val = fLeft[i].unserCounts; 
-	 if(varName.compare("u1.rate")==0    ) val = fLeft[i].u1Rate;
-	 if(varName.compare("unew.rate")==0  ) val = fLeft[i].unewRate;
-	 if(varName.compare("d1.rate")==0    ) val = fLeft[i].d1Rate;
-	 if(varName.compare("d3.rate")==0    ) val = fLeft[i].d3Rate;
-	 if(varName.compare("d10.rate")==0   ) val = fLeft[i].d10Rate;
-	 if(varName.compare("dnew.rate")==0  ) val = fLeft[i].dnewRate;
-	 if(varName.compare("unser.rate")==0 ) val = fLeft[i].unserRate;
+	 if(varName.compare("event")==0         ) val = fLeft[i].event; 
+	 if(varName.compare("time")==0          ) val = fLeft[i].time; 
+	 if(varName.compare("time_num")==0      ) val = fLeft[i].time_num; 
+	 if(varName.compare("time_den")==0      ) val = fLeft[i].time_den; 
+	 if(varName.compare("u1.cnt")==0        ) val = fLeft[i].u1Counts; 
+	 if(varName.compare("unew.cnt")==0      ) val = fLeft[i].unewCounts; 
+	 if(varName.compare("d1.cnt")==0        ) val = fLeft[i].d1Counts; 
+	 if(varName.compare("d3.cnt")==0        ) val = fLeft[i].d3Counts; 
+	 if(varName.compare("d10.cnt")==0       ) val = fLeft[i].d10Counts;
+	 if(varName.compare("dnew.cnt")==0      ) val = fLeft[i].dnewCounts; 
+	 if(varName.compare("unser.cnt")==0     ) val = fLeft[i].unserCounts; 
+	 if(varName.compare("u1.rate")==0       ) val = fLeft[i].u1Rate;
+	 if(varName.compare("unew.rate")==0     ) val = fLeft[i].unewRate;
+	 if(varName.compare("d1.rate")==0       ) val = fLeft[i].d1Rate;
+	 if(varName.compare("d3.rate")==0       ) val = fLeft[i].d3Rate;
+	 if(varName.compare("d10.rate")==0      ) val = fLeft[i].d10Rate;
+	 if(varName.compare("dnew.rate")==0     ) val = fLeft[i].dnewRate;
+	 if(varName.compare("unser.rate")==0    ) val = fLeft[i].unserRate;
+	 if(varName.compare("u1.current")==0    ) val = fLeft[i].u1Current;
+	 if(varName.compare("unew.current")==0  ) val = fLeft[i].unewCurrent;
+	 if(varName.compare("d1.current")==0    ) val = fLeft[i].d1Current;
+	 if(varName.compare("d3.current")==0    ) val = fLeft[i].d3Current;
+	 if(varName.compare("d10.current")==0   ) val = fLeft[i].d10Current;
+	 if(varName.compare("dnew.current")==0  ) val = fLeft[i].dnewCurrent;
+	 if(varName.compare("unser.current")==0 ) val = fLeft[i].unserCurrent;
       }else if(armName.compare("sbs")==0){
-       	 if(varName.compare("event")==0)       val = fSBS[i].event; 
-	 if(varName.compare("time")==0)        val = fSBS[i].time; 
-	 if(varName.compare("time_num")==0)    val = fSBS[i].time_num; 
-	 if(varName.compare("time_den")==0)    val = fSBS[i].time_den; 
-	 if(varName.compare("u1.cnt")==0     ) val = fSBS[i].u1Counts; 
-	 if(varName.compare("unew.cnt")==0   ) val = fSBS[i].unewCounts; 
-	 if(varName.compare("d1.cnt")==0     ) val = fSBS[i].d1Counts; 
-	 if(varName.compare("d3.cnt")==0     ) val = fSBS[i].d3Counts; 
-	 if(varName.compare("d10.cnt")==0    ) val = fSBS[i].d10Counts;
-	 if(varName.compare("dnew.cnt")==0   ) val = fSBS[i].dnewCounts; 
-	 if(varName.compare("unser.cnt")==0  ) val = fSBS[i].unserCounts; 
-	 if(varName.compare("u1.rate")==0    ) val = fSBS[i].u1Rate;
-	 if(varName.compare("unew.rate")==0  ) val = fSBS[i].unewRate;
-	 if(varName.compare("d1.rate")==0    ) val = fSBS[i].d1Rate;
-	 if(varName.compare("d3.rate")==0    ) val = fSBS[i].d3Rate;
-	 if(varName.compare("d10.rate")==0   ) val = fSBS[i].d10Rate;
-	 if(varName.compare("dnew.rate")==0  ) val = fSBS[i].dnewRate;
-	 if(varName.compare("unser.rate")==0 ) val = fSBS[i].unserRate;
+       	 if(varName.compare("event")==0         ) val = fSBS[i].event; 
+	 if(varName.compare("time")==0          ) val = fSBS[i].time; 
+	 if(varName.compare("time_num")==0      ) val = fSBS[i].time_num; 
+	 if(varName.compare("time_den")==0      ) val = fSBS[i].time_den; 
+	 if(varName.compare("u1.cnt")==0        ) val = fSBS[i].u1Counts; 
+	 if(varName.compare("unew.cnt")==0      ) val = fSBS[i].unewCounts; 
+	 if(varName.compare("d1.cnt")==0        ) val = fSBS[i].d1Counts; 
+	 if(varName.compare("d3.cnt")==0        ) val = fSBS[i].d3Counts; 
+	 if(varName.compare("d10.cnt")==0       ) val = fSBS[i].d10Counts;
+	 if(varName.compare("dnew.cnt")==0      ) val = fSBS[i].dnewCounts; 
+	 if(varName.compare("unser.cnt")==0     ) val = fSBS[i].unserCounts; 
+	 if(varName.compare("u1.rate")==0       ) val = fSBS[i].u1Rate;
+	 if(varName.compare("unew.rate")==0     ) val = fSBS[i].unewRate;
+	 if(varName.compare("d1.rate")==0       ) val = fSBS[i].d1Rate;
+	 if(varName.compare("d3.rate")==0       ) val = fSBS[i].d3Rate;
+	 if(varName.compare("d10.rate")==0      ) val = fSBS[i].d10Rate;
+	 if(varName.compare("dnew.rate")==0     ) val = fSBS[i].dnewRate;
+	 if(varName.compare("unser.rate")==0    ) val = fSBS[i].unserRate;
+	 if(varName.compare("u1.current")==0    ) val = fSBS[i].u1Current;
+	 if(varName.compare("unew.current")==0  ) val = fSBS[i].unewCurrent;
+	 if(varName.compare("d1.current")==0    ) val = fSBS[i].d1Current;
+	 if(varName.compare("d3.current")==0    ) val = fSBS[i].d3Current;
+	 if(varName.compare("d10.current")==0   ) val = fSBS[i].d10Current;
+	 if(varName.compare("dnew.current")==0  ) val = fSBS[i].dnewCurrent;
+	 if(varName.compare("unser.current")==0 ) val = fSBS[i].unserCurrent;
       }else if(armName.compare("E")==0){
          if(varName.compare("event")==0)           val = fEPICS[i].event; 
 	 if(varName.compare("time")==0)            val = fEPICS[i].time; 

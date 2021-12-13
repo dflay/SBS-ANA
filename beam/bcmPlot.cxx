@@ -11,9 +11,8 @@
 #include "TLine.h"
 
 #include "./include/codaRun.h"
-#include "./src/BCMManager.cxx"
-#include "./src/bcmUtilities.cxx"
 #include "./src/Graph.cxx"
+#include "./src/bcmUtilities.cxx"
 
 int bcmPlot(const char *runPath){
 
@@ -29,7 +28,7 @@ int bcmPlot(const char *runPath){
    rc = bcm_util::LoadRuns(runPath,prefix,runList);
    if(rc!=0) return 1; 
 
-   BCMManager *mgr = new BCMManager();
+   BCMManager *mgr = new BCMManager("NONE",false,true,"./input/calib-coeff_12-01-21.csv");
 
    TString filePath;  
    const int NR = runList.size();  
@@ -43,17 +42,35 @@ int bcmPlot(const char *runPath){
    TString varName[N] = {"u1.rate","unew.rate","unser.rate","dnew.rate","d1.rate","d3.rate","d10.rate"};
    TString xAxis      = Form("event"); 
 
-   // create TGraphs 
+   // create graphs and histograms 
 
-   TGraph **g = new TGraph*[N]; 
+   TGraph **g = new TGraph*[N];
+   TH1F **h   = new TH1F*[N]; 
+
+   int NBin = 100; 
+   // histo bounds  u1  unew    unser  dnew d1     d3    d10  
+   double min[N] = {0    ,0    ,700E+3,0    ,0    ,0    ,0    };
+   double max[N] = {10E+3,50E+3,900E+3,50E+3,10E+3,10E+3,10E+3};
 
    for(int i=0;i<N;i++){
       g[i] = mgr->GetTGraph("sbs",xAxis.Data(),varName[i]);
-      graph_df::SetParameters(g[i],20,kBlack); 
+      graph_df::SetParameters(g[i],20,kBlack);
+      h[i] = mgr->GetTH1F("sbs",varName[i].Data(),NBin,min[i],max[i]); 
    }
 
    TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2"); 
-   gEPICSCurrent->SetMarkerStyle(20);
+   graph_df::SetParameters(gEPICSCurrent,20,kBlack);  
+
+   TGraph *gUnserCurrent = mgr->GetTGraph("sbs","event","unser.current");
+   graph_df::SetParameters(gUnserCurrent,20,kRed);  
+
+   TMultiGraph *mgc = new TMultiGraph();
+   mgc->Add(gEPICSCurrent,"lp"); 
+   mgc->Add(gUnserCurrent,"lp"); 
+
+   TLegend *L = new TLegend(0.6,0.6,0.8,0.8);
+   L->AddEntry(gEPICSCurrent,"EPICS Current (IBC1H04CRCUR2)","p"); 
+   L->AddEntry(gUnserCurrent,"Unser Current","p"); 
 
    TCanvas *c1a = new TCanvas("c1a","BCM Check",1200,800);
    c1a->Divide(2,2);
@@ -95,17 +112,40 @@ int bcmPlot(const char *runPath){
    g[6]->Draw("alp");
    c1b->Update();
 
+   // histograms
+   TCanvas *c2a = new TCanvas("c2a","BCM Check [Histograms]",1200,800);
+   c2a->Divide(2,2);
+
+   TCanvas *c2b = new TCanvas("c2b","BCM Check [Histograms]",1200,800);
+   c2b->Divide(2,2);
+
+   for(int i=0;i<N/2;i++){
+      c2a->cd(i+1);
+      h[i]->Draw("");
+      c2a->Update();
+      // next canvas 
+      c2b->cd(i+1);
+      h[i+3]->Draw("");
+      c2b->Update();
+   }
+
+   // last one 
+   c2b->cd(4); 
+   h[6]->Draw("");
+   c2b->Update();
+
    // EPICS plots
 
    TCanvas *c3 = new TCanvas("c3","EPICS Beam Current",1200,800); 
 
-   Title      = Form("IBC1H04CRCUR2"       );
-   yAxisTitle = Form("IBC1H04CRCUR2 [#muA]");
+   Title      = Form("Beam Current"       );
+   yAxisTitle = Form("Beam Current [#muA]");
 
    c3->cd();
-   gEPICSCurrent->Draw("alp");
-   graph_df::SetLabels(gEPICSCurrent,Title,xAxisTitle,yAxisTitle); 
-   gEPICSCurrent->Draw("alp");
+   mgc->Draw("a");
+   graph_df::SetLabels(mgc,Title,xAxisTitle,yAxisTitle); 
+   mgc->Draw("a");
+   L->Draw("same"); 
    c3->Update();
 
    return 0;
