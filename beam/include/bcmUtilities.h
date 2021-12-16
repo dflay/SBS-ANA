@@ -15,8 +15,8 @@
 #include "scalerData.h"
 
 namespace bcm_util {
-   int GetData(std::string var,std::vector<producedVariable_t> data,std::vector<double> &x,std::vector<double> &dx); 
    int Print(producedVariable_t data); 
+   int GetData(std::string var,std::vector<producedVariable_t> data,std::vector<double> &x,std::vector<double> &dx); 
    int WriteToFile(const char *outpath,std::vector<producedVariable_t> data); 
    int WriteToFile_cc(const char *outpath,std::vector<calibCoeff_t> data); 
    int LoadProducedVariables(const char *inpath,std::vector<producedVariable_t> &data);
@@ -29,7 +29,11 @@ namespace bcm_util {
    int SubtractBaseline(std::vector<producedVariable_t> on,std::vector<producedVariable_t> off, 
                         std::vector<producedVariable_t> &diff,bool isDebug=false);
 
-   TGraphErrors *GetStatsByRun(std::string var,std::vector<scalerData_t> data);
+   int GetStats_byRun(std::string var,std::vector<scalerData_t> data,
+                      std::vector<double> &RUN,std::vector<double> &MEAN,std::vector<double> &STDEV); 
+
+   TGraphErrors *GetTGraphErrors_byRun(std::string var,std::vector<scalerData_t> data);
+   TGraphErrors *GetTGraphErrors_byRunByUnserCurrent(std::string var,std::vector<scalerData_t> data); 
 }
 
 #endif 

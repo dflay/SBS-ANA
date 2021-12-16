@@ -20,6 +20,7 @@
 
 #include "scalerData.h"
 #include "epicsData.h"
+#include "calibCoeff.h"
 
 class BCMManager {
 
@@ -36,7 +37,7 @@ class BCMManager {
       bool IsBad(double v);  
 
    public: 
-      BCMManager(const char *filePath="NONE",bool isDebug=false,bool calculateCurrent=false,const char *ccFilePath="NONE");
+      BCMManager(const char *filePath="NONE",bool isDebug=false,const char *ccFilePath="NONE");
       ~BCMManager(); 
 
       void SetDebug(bool v=true)         { fIsDebug          = v; }

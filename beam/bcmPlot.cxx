@@ -28,7 +28,7 @@ int bcmPlot(const char *runPath){
    rc = bcm_util::LoadRuns(runPath,prefix,runList);
    if(rc!=0) return 1; 
 
-   BCMManager *mgr = new BCMManager("NONE",false,true,"./input/calib-coeff_12-01-21.csv");
+   BCMManager *mgr = new BCMManager("NONE",false,"./input/calib-coeff_12-01-21.csv");
 
    TString filePath;  
    const int NR = runList.size();  

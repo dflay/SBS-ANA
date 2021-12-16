@@ -2,13 +2,31 @@
 #include "CSVManager.cxx"
 #include "Math.cxx"
 #include "BCMManager.cxx"
-//______________________________________________________________________________
 namespace bcm_util {
    //______________________________________________________________________________
-   TGraphErrors *GetStatsByRun(std::string var,std::vector<scalerData_t> data){
+   TGraphErrors *GetTGraphErrors_byRunByUnserCurrent(std::string var,std::vector<scalerData_t> data){
+      // get a plot of BCM scaler rate vs Unser current (on a run-by-run basis) 
+      // note: this is a sub-optimal way to do a BCM calibration; there is no toggling of on/off 
+      // of the beam current here. we utilize the unser calibration against the 
+      // precision current source
+      // you must provide the calibration numbers to the BCMManager before calling this function  
+      std::vector<double> run,mean,stdev;
+      // first get the BCM scaler rate vs run number 
+      GetStats_byRun(var,data,run,mean,stdev); 
+      // now get the unser current 
+      run.clear(); // clear this since we're grabbing them again 
+      std::vector<double> mean_ui,stdev_ui; 
+      GetStats_byRun("unser.current",data,run,mean_ui,stdev_ui); 
+      // now make the TGraphErrors plot 
+      TGraphErrors *g = graph_df::GetTGraphErrors(mean_ui,stdev_ui,mean,stdev); 
+      return g; 
+   }
+   //______________________________________________________________________________
+   int GetStats_byRun(std::string var,std::vector<scalerData_t> data,
+                      std::vector<double> &RUN,std::vector<double> &MEAN,std::vector<double> &STDEV){
       // get stats of var vs run number  
       int run_prev = data[0].runNumber;
-      std::vector<double> v,RUN,MEAN,STDEV;
+      std::vector<double> v;
       double mean=0,stdev=0,theRun=0,theValue=0;
       const int NEV = data.size();
       for(int i=0;i<NEV;i++){
@@ -41,9 +59,9 @@ namespace bcm_util {
 	    mean  = math_df::GetMean<double>(v);
 	    stdev = math_df::GetStandardDeviation<double>(v);
 	    // save results
+	    RUN.push_back(run_prev);
 	    MEAN.push_back(mean);
 	    STDEV.push_back(stdev);
-	    RUN.push_back(run_prev);
 	    // set up for next event 
 	    v.clear();
 	    // the current value counts for the "next" run that didn't match the previous 
@@ -55,12 +73,10 @@ namespace bcm_util {
       mean  = math_df::GetMean<double>(v);
       stdev = math_df::GetStandardDeviation<double>(v);
       // save results
+      RUN.push_back(theRun);
       MEAN.push_back(mean);
       STDEV.push_back(stdev);
-      RUN.push_back(theRun);
-      // make TGraphErrors
-      TGraphErrors *g = graph_df::GetTGraphErrors(RUN,MEAN,STDEV);
-      return g;
+      return 0;
    }
    //______________________________________________________________________________
    int GetData(std::string var,std::vector<producedVariable_t> data,std::vector<double> &x,std::vector<double> &dx){
@@ -336,5 +352,13 @@ namespace bcm_util {
       }
       std::cout << "Found " << cntr << " BCM matches" << std::endl;
       return cntr;
+   }
+   //______________________________________________________________________________
+   TGraphErrors *GetTGraphErrors_byRun(std::string var,std::vector<scalerData_t> data){
+      // make TGraphErrors of data as a function of run number 
+      std::vector<double> run,mean,stdev;
+      GetStats_byRun(var,data,run,mean,stdev); 
+      TGraphErrors *g = graph_df::GetTGraphErrors(run,mean,stdev);
+      return g;
    }
 }

@@ -1,22 +1,24 @@
 #include "../include/BCMManager.h"
 //______________________________________________________________________________
-BCMManager::BCMManager(const char *filePath,bool isDebug,bool calculateCurrent,const char *ccFilePath){
-   fIsDebug       = isDebug; 
-   fCalculateCurrent = calculateCurrent;  
-   fEvtCntrLeft   = 0;  
-   fEvtCntrSBS    = 0;  
-   fEvtCntrEPICS  = 0; 
-   fLastTimeLeft  = 0; 
-   fLastTimeSBS   = 0;
+BCMManager::BCMManager(const char *filePath,bool isDebug,const char *ccFilePath){
+   fIsDebug          = isDebug; 
+   fCalculateCurrent = false;  
+   fEvtCntrLeft      = 0;  
+   fEvtCntrSBS       = 0;  
+   fEvtCntrEPICS     = 0; 
+   fLastTimeLeft     = 0; 
+   fLastTimeSBS      = 0;
 
    std::string path = filePath; 
    if(path.compare("NONE")!=0){
       LoadFile(filePath);
    }
 
-   if(fCalculateCurrent){
-      LoadCalibrationCoefficients(ccFilePath); 
-   }
+   std::string cc_filePath = ccFilePath; 
+   if(cc_filePath.compare("NONE")!=0){
+      fCalculateCurrent = true;
+      LoadCalibrationCoefficients(ccFilePath);
+   } 
  
 }
 //______________________________________________________________________________
