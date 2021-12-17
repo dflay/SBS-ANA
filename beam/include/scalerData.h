@@ -4,7 +4,8 @@
 // a data struct for scaler data 
 
 typedef struct scalerData {
-   std::string arm;       // arm (Left, sbs, or E)  
+   std::string arm;       // arm (Left, sbs, or E) 
+   std::string info;      // user notes  
    double time;           // time in seconds                    
    double time_num;       // time numerator: clock counts                
    double time_den;       // time denominator: clock rate
@@ -33,14 +34,14 @@ typedef struct scalerData {
    int event;
    // constructor 
    scalerData():
-      arm("NONE"),time(0),time_num(0),time_den(0),
+      arm("NONE"),info("NONE"),time(0),time_num(0),time_den(0),
       unserRate(0),unserCounts(0),unserCurrent(0),
       u1Rate(0),u1Counts(0),u1Current(0),unewRate(0),unewCounts(0),unewCurrent(0),
       dnewRate(0),dnewCounts(0),dnewCurrent(0),d1Rate(0),d1Counts(0),d1Current(0),
       d3Rate(0),d3Counts(0),d3Current(0),d10Rate(0),d10Counts(0),d10Current(0),
       runNumber(0),event(0)
    {} 
-   // get value of the variable based on name 
+   // get value of the member variable based on name 
    double getValue(std::string varName){
       double val = 0;
       if(varName.compare("run")==0)            val = runNumber;

@@ -29,8 +29,16 @@ class BCMManager {
       int fEvtCntrLeft,fEvtCntrSBS,fEvtCntrEPICS;
       double fLastTimeLeft,fLastTimeSBS; 
 
-      std::vector<calibCoeff_t> fCC;  // calibration coefficients to convert rate to current [uA]  
+      // calibration coefficients to convert rate to current [uA]
+      // old style: unser, upstream and downstream BCMs in one vector 
+      std::vector<calibCoeff_t> fCC;   
 
+      // calibration coefficients for multiple run ranges 
+      std::vector<calibCoeff_t> fccUnser;
+      std::vector<calibCoeff_t> fccU1,fccUnew;
+      std::vector<calibCoeff_t> fccD1,fccD3,fCCd10,fccDnew;
+
+      // data structs to hold scaler data  
       std::vector<scalerData_t> fLeft,fSBS;
       std::vector<epicsData_t> fEPICS;
 

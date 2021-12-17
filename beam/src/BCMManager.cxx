@@ -399,68 +399,9 @@ int BCMManager::GetVector(const char *arm,const char *var,std::vector<double> &v
    double val=0;
    for(int i=0;i<NN;i++){
       val = 0;
-      if(armName.compare("Left")==0){
-	 if(varName.compare("event")==0         ) val = fLeft[i].event; 
-	 if(varName.compare("time")==0          ) val = fLeft[i].time; 
-	 if(varName.compare("time_num")==0      ) val = fLeft[i].time_num; 
-	 if(varName.compare("time_den")==0      ) val = fLeft[i].time_den; 
-	 if(varName.compare("u1.cnt")==0        ) val = fLeft[i].u1Counts; 
-	 if(varName.compare("unew.cnt")==0      ) val = fLeft[i].unewCounts; 
-	 if(varName.compare("d1.cnt")==0        ) val = fLeft[i].d1Counts; 
-	 if(varName.compare("d3.cnt")==0        ) val = fLeft[i].d3Counts; 
-	 if(varName.compare("d10.cnt")==0       ) val = fLeft[i].d10Counts;
-	 if(varName.compare("dnew.cnt")==0      ) val = fLeft[i].dnewCounts; 
-	 if(varName.compare("unser.cnt")==0     ) val = fLeft[i].unserCounts; 
-	 if(varName.compare("u1.rate")==0       ) val = fLeft[i].u1Rate;
-	 if(varName.compare("unew.rate")==0     ) val = fLeft[i].unewRate;
-	 if(varName.compare("d1.rate")==0       ) val = fLeft[i].d1Rate;
-	 if(varName.compare("d3.rate")==0       ) val = fLeft[i].d3Rate;
-	 if(varName.compare("d10.rate")==0      ) val = fLeft[i].d10Rate;
-	 if(varName.compare("dnew.rate")==0     ) val = fLeft[i].dnewRate;
-	 if(varName.compare("unser.rate")==0    ) val = fLeft[i].unserRate;
-	 if(varName.compare("u1.current")==0    ) val = fLeft[i].u1Current;
-	 if(varName.compare("unew.current")==0  ) val = fLeft[i].unewCurrent;
-	 if(varName.compare("d1.current")==0    ) val = fLeft[i].d1Current;
-	 if(varName.compare("d3.current")==0    ) val = fLeft[i].d3Current;
-	 if(varName.compare("d10.current")==0   ) val = fLeft[i].d10Current;
-	 if(varName.compare("dnew.current")==0  ) val = fLeft[i].dnewCurrent;
-	 if(varName.compare("unser.current")==0 ) val = fLeft[i].unserCurrent;
-      }else if(armName.compare("sbs")==0){
-       	 if(varName.compare("event")==0         ) val = fSBS[i].event; 
-	 if(varName.compare("time")==0          ) val = fSBS[i].time; 
-	 if(varName.compare("time_num")==0      ) val = fSBS[i].time_num; 
-	 if(varName.compare("time_den")==0      ) val = fSBS[i].time_den; 
-	 if(varName.compare("u1.cnt")==0        ) val = fSBS[i].u1Counts; 
-	 if(varName.compare("unew.cnt")==0      ) val = fSBS[i].unewCounts; 
-	 if(varName.compare("d1.cnt")==0        ) val = fSBS[i].d1Counts; 
-	 if(varName.compare("d3.cnt")==0        ) val = fSBS[i].d3Counts; 
-	 if(varName.compare("d10.cnt")==0       ) val = fSBS[i].d10Counts;
-	 if(varName.compare("dnew.cnt")==0      ) val = fSBS[i].dnewCounts; 
-	 if(varName.compare("unser.cnt")==0     ) val = fSBS[i].unserCounts; 
-	 if(varName.compare("u1.rate")==0       ) val = fSBS[i].u1Rate;
-	 if(varName.compare("unew.rate")==0     ) val = fSBS[i].unewRate;
-	 if(varName.compare("d1.rate")==0       ) val = fSBS[i].d1Rate;
-	 if(varName.compare("d3.rate")==0       ) val = fSBS[i].d3Rate;
-	 if(varName.compare("d10.rate")==0      ) val = fSBS[i].d10Rate;
-	 if(varName.compare("dnew.rate")==0     ) val = fSBS[i].dnewRate;
-	 if(varName.compare("unser.rate")==0    ) val = fSBS[i].unserRate;
-	 if(varName.compare("u1.current")==0    ) val = fSBS[i].u1Current;
-	 if(varName.compare("unew.current")==0  ) val = fSBS[i].unewCurrent;
-	 if(varName.compare("d1.current")==0    ) val = fSBS[i].d1Current;
-	 if(varName.compare("d3.current")==0    ) val = fSBS[i].d3Current;
-	 if(varName.compare("d10.current")==0   ) val = fSBS[i].d10Current;
-	 if(varName.compare("dnew.current")==0  ) val = fSBS[i].dnewCurrent;
-	 if(varName.compare("unser.current")==0 ) val = fSBS[i].unserCurrent;
-      }else if(armName.compare("E")==0){
-         if(varName.compare("event")==0)           val = fEPICS[i].event; 
-	 if(varName.compare("time")==0)            val = fEPICS[i].time; 
-	 if(varName.compare("IPM1H04A.XPOS")==0)   val = fEPICS[i].IPM1H04A_XPOS; 
-	 if(varName.compare("IPM1H04A.YPOS")==0)   val = fEPICS[i].IPM1H04A_YPOS; 
-	 if(varName.compare("IPM1H04E.XPOS")==0)   val = fEPICS[i].IPM1H04E_XPOS; 
-	 if(varName.compare("IPM1H04E.YPOS")==0)   val = fEPICS[i].IPM1H04E_YPOS; 
-	 if(varName.compare("hac_bcm_average")==0) val = fEPICS[i].hac_bcm_average; 
-	 if(varName.compare("IBC1H04CRCUR2")==0)   val = fEPICS[i].IBC1H04CRCUR2; 
-      }
+      if(armName.compare("Left")==0) val = fLeft[i].getValue(varName); 
+      if(armName.compare("sbs")==0)  val = fSBS[i].getValue(varName); 
+      if(armName.compare("E")==0)    val = fEPICS[i].getValue(varName); 
       v.push_back(val);
    }
   
