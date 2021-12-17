@@ -21,7 +21,7 @@ int Test(){
    scalerData_t data; 
    data.unserCurrent = 15.; 
 
-   std::cout << data.getValue("unser.current") << std::endl;
+   std::cout << data.Print("rate") << std::endl;
 
    // // settings 
    // bool logScale   = false;

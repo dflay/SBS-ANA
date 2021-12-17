@@ -412,7 +412,7 @@ int BCMManager::GetVector(const char *arm,const char *var,std::vector<double> &v
 }
 //______________________________________________________________________________
 void BCMManager::Print(const char *arm){
-
+   // print data to screen
    std::string ARM = arm; 
    const int NL = fLeft.size();
    const int NS = fSBS.size();
@@ -424,40 +424,11 @@ void BCMManager::Print(const char *arm){
 
    for(int i=0;i<N;i++){
       if(ARM.compare("Left")==0){
-	 PrintScaler(fLeft[i]); 
+	 fLeft[i].Print("rate"); 
       }else if(ARM.compare("sbs")==0){
-	 PrintScaler(fSBS[i]); 
+	 fSBS[i].Print("rate"); 
       }else if(ARM.compare("E")==0){
-	 PrintEPICS(fEPICS[i]); 
+	 fEPICS[i].Print();
       } 
    }
-
 }
-//______________________________________________________________________________
-void BCMManager::PrintScaler(scalerData_t data){
-   std::cout << Form("event %03d, "       ,data.event) 
-             << Form("run %05d, "         ,data.runNumber) 
-             << Form("time = %.3lf, "     ,data.time) 
-             << Form("time_num = %.3lf, " ,data.time_num) 
-             << Form("time_den = %.3lf, " ,data.time_den) 
-             << Form("unser rate = %.3lf ",data.unserRate) 
-             << Form("u1 rate = %.3lf "   ,data.u1Rate) 
-             << Form("unew rate = %.3lf " ,data.unewRate) 
-             << Form("dnew rate = %.3lf " ,data.dnewRate) 
-             << Form("d1 rate = %.3lf "   ,data.d1Rate) 
-             << Form("d3 rate = %.3lf "   ,data.d3Rate) 
-             << Form("d10 rate = %.3lf "  ,data.d10Rate) << std::endl;
-}
-//______________________________________________________________________________
-void BCMManager::PrintEPICS(epicsData_t data){
-   std::cout << Form("event %03d, "             ,data.event) 
-             << Form("run %05d, "               ,data.runNumber) 
-             << Form("time = %.3lf, "           ,data.time) 
-             << Form("IPM1H04A_XPOS = %.3lf, "  ,data.IPM1H04A_XPOS) 
-             << Form("IPM1H04A_YPOS = %.3lf, "  ,data.IPM1H04A_YPOS) 
-             << Form("IPM1H04E_XPOS = %.3lf, "  ,data.IPM1H04E_XPOS) 
-             << Form("IPM1H04E_YPOS = %.3lf, "  ,data.IPM1H04E_YPOS) 
-             << Form("hac_bcm_average = %.3lf, ",data.hac_bcm_average) 
-             << Form("IPM1H04CRCUR2 = %.3lf, "  ,data.IBC1H04CRCUR2) << std::endl; 
-}
-

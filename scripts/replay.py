@@ -37,7 +37,7 @@ entries = []
 # default arguments to the replay script
 firstEvent = 0 
 lastEvent  = -1 
-nSegments  = 250 
+nSegments  = 700 
 
 # files to save status
 # chop off the file extension and use the name for the log files

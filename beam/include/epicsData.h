@@ -34,6 +34,19 @@ typedef struct epicsData {
       if(varName.compare("hac_bcm_average")==0) val = hac_bcm_average;
       if(varName.compare("IBC1H04CRCUR2")==0)   val = IBC1H04CRCUR2;
       return val;
+   }
+   // print to screen 
+   int Print(){
+      std::cout << Form("event %03d, "             ,event)
+	        << Form("run %05d, "               ,runNumber)
+	        << Form("time = %.3lf, "           ,time)
+	        << Form("IPM1H04A_XPOS = %.3lf, "  ,IPM1H04A_XPOS)
+	        << Form("IPM1H04A_YPOS = %.3lf, "  ,IPM1H04A_YPOS)
+	        << Form("IPM1H04E_XPOS = %.3lf, "  ,IPM1H04E_XPOS)
+	        << Form("IPM1H04E_YPOS = %.3lf, "  ,IPM1H04E_YPOS)
+	        << Form("hac_bcm_average = %.3lf, ",hac_bcm_average)
+	        << Form("IPM1H04CRCUR2 = %.3lf, "  ,IBC1H04CRCUR2) << std::endl;
+      return 0;
    } 
 } epicsData_t; 
 

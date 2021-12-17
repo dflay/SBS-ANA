@@ -59,8 +59,6 @@ class BCMManager {
       int  LoadCalibrationCoefficients(const char *filePath); 
 
       void Print(const char *arm);
-      void PrintScaler(scalerData_t data); 
-      void PrintEPICS(epicsData_t data); 
 
       int GetCalibrationCoeff(std::string dev,std::vector<double> &v,std::vector<double> &dv); 
       int ApplyCalibrationCoeff(scalerData_t &data); 

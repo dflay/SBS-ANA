@@ -69,6 +69,50 @@ typedef struct scalerData {
       if(varName.compare("dnew.cnt")==0)       val = dnewCounts;
       if(varName.compare("dnew.current")==0)   val = dnewCurrent;
       return val;
+   }
+   // print data to screen 
+   int Print(std::string type){
+      if(type.compare("rate")==0){
+	 std::cout << Form("event %03d, "       ,event)
+	           << Form("run %05d, "         ,runNumber)
+	           << Form("time = %.3lf, "     ,time)
+	           << Form("time_num = %.3lf, " ,time_num)
+	           << Form("time_den = %.3lf, " ,time_den)
+	           << Form("unser rate = %.3lf ",unserRate)
+	           << Form("u1 rate = %.3lf "   ,u1Rate)
+	           << Form("unew rate = %.3lf " ,unewRate)
+	           << Form("d1 rate = %.3lf "   ,d1Rate)
+	           << Form("d3 rate = %.3lf "   ,d3Rate)
+	           << Form("d10 rate = %.3lf "  ,d10Rate)
+	           << Form("dnew rate = %.3lf " ,dnewRate) << std::endl;
+      }else if(type.compare("cnt")==0 || type.compare("count")==0){
+	 std::cout << Form("event %03d, "      ,event)
+	           << Form("run %05d, "        ,runNumber)
+	           << Form("time = %.3lf, "    ,time)
+	           << Form("time_num = %.3lf, ",time_num)
+	           << Form("time_den = %.3lf, ",time_den)
+	           << Form("unser cnt = %.3lf ",unserCounts)
+	           << Form("u1 cnt = %.3lf "   ,u1Counts)
+	           << Form("unew cnt = %.3lf " ,unewCounts)
+	           << Form("d1 cnt = %.3lf "   ,d1Counts)
+	           << Form("d3 cnt = %.3lf "   ,d3Counts)
+	           << Form("d10 cnt = %.3lf "  ,d10Counts)
+	           << Form("dnew cnt = %.3lf " ,dnewCounts) << std::endl;
+      }else if(type.compare("current")==0){
+	 std::cout << Form("event %03d, "          ,event)
+	           << Form("run %05d, "            ,runNumber)
+	           << Form("time = %.3lf, "        ,time)
+	           << Form("time_num = %.3lf, "    ,time_num)
+	           << Form("time_den = %.3lf, "    ,time_den)
+	           << Form("unser current = %.3lf ",unserCurrent)
+	           << Form("u1 current = %.3lf "   ,u1Current)
+	           << Form("unew current = %.3lf " ,unewCurrent)
+	           << Form("d1 current = %.3lf "   ,d1Current)
+	           << Form("d3 current = %.3lf "   ,d3Current)
+	           << Form("d10 current = %.3lf "  ,d10Current)
+	           << Form("dnew current = %.3lf " ,dnewCurrent) << std::endl;
+      }
+      return 0;
    } 
 } scalerData_t; 
 
