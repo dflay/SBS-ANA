@@ -37,14 +37,35 @@ void BCMManager::Clear(){
    fLastTimeSBS  = 0; 
 }
 //______________________________________________________________________________
-void BCMManager::LoadFile(const char *filePath,int runNumber){
-   // Attach trees for LHRS and SBS 
-   LoadDataFromTree(filePath,"TSLeft",runNumber); 
-   LoadDataFromTree(filePath,"TSsbs" ,runNumber);
-   LoadEPICSDataFromTree(filePath,runNumber);  
+int BCMManager::LoadFile(const char *filePath,int runNumber){
+   // Attach trees for LHRS and SBS
+   int rc = CheckFile(filePath); 
+   if(rc!=0){
+      std::cout << "[BCMManager::LoadFile]: Cannot open the file for run " << runNumber << std::endl;
+      return rc;
+   }
+   // file is valid, read in the data from the trees 
+   rc = LoadDataFromTree(filePath,"TSLeft",runNumber); 
+   rc = LoadDataFromTree(filePath,"TSsbs" ,runNumber);
+   rc = LoadEPICSDataFromTree(filePath,runNumber); 
+
+   return rc; 
 }
 //______________________________________________________________________________
-void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int runNumber){
+int BCMManager::CheckFile(const char *filePath){
+   TFile *myFile = new TFile(filePath);
+
+   Long64_t bytesRead = myFile->GetBytesRead();
+
+   int rc=1; 
+   if(bytesRead!=0){
+      // file has non-zero size
+      rc = 0;
+   } 
+   return rc;
+}
+//______________________________________________________________________________
+int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int runNumber){
 
    if(fIsDebug) std::cout << "[BCMManager::LoadDataFromTree]: Loading data from tree: " << treeName << std::endl;
 
@@ -62,9 +83,15 @@ void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int 
    double d3_rate=0,d3_cnt=0;
    double d10_rate=0,d10_cnt=0;
 
-   TChain *ch = new TChain(treeName); 
+   TChain *ch = nullptr; 
+   ch = new TChain(treeName); 
    ch->Add(filePath);
-   int NN = ch->GetEntries(); 
+   int NN = ch->GetEntries();
+
+   if(ch==nullptr){
+      return 1;
+   } 
+ 
    TTree *aTree = ch->GetTree();
    aTree->SetBranchAddress(Form("%s.bcm.unser.cnt" ,arm.c_str()),&unser_cnt );
    aTree->SetBranchAddress(Form("%s.bcm.unser.rate",arm.c_str()),&unser_rate);
@@ -152,7 +179,57 @@ void BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int 
    if(fIsDebug) std::cout << "The last time is: " << lastTime << std::endl;
  
    delete aTree; 
+   delete ch;
+   
+   return 0; 
+}
+//______________________________________________________________________________
+int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
+
+   if(fIsDebug) std::cout << "[BCMManager::LoadEPICSDataFromTree]: Loading data from tree: E" << std::endl; 
+
+   double epicsTime=0,IBC1H04CRCUR2=0,hac_bcm_average=0;
+   double IPM1H04A_XPOS=0,IPM1H04A_YPOS=0; 
+   double IPM1H04E_XPOS=0,IPM1H04E_YPOS=0; 
+
+   TChain *ch = nullptr; 
+   ch = new TChain("E"); 
+   ch->Add(filePath);
+
+   if(ch==nullptr){
+      return 1;
+   }
+
+   int NL = ch->GetEntries(); 
+   TTree *aTree = ch->GetTree();
+   aTree->SetBranchAddress("hac_bcm_average",&hac_bcm_average);
+   aTree->SetBranchAddress("IPM1H04A.XPOS"  ,&IPM1H04A_XPOS  );
+   aTree->SetBranchAddress("IPM1H04A.YPOS"  ,&IPM1H04A_YPOS  );
+   aTree->SetBranchAddress("IPM1H04E.XPOS"  ,&IPM1H04E_XPOS  );
+   aTree->SetBranchAddress("IPM1H04E.YPOS"  ,&IPM1H04E_YPOS  );
+   aTree->SetBranchAddress("IBC1H04CRCUR2"  ,&IBC1H04CRCUR2  );
+   aTree->SetBranchAddress("timestamp"      ,&epicsTime      );
+
+   epicsData_t pt; 
+   for(int i=0;i<NL;i++){
+      aTree->GetEntry(i); 
+      pt.event           = fEvtCntrEPICS; 
+      pt.runNumber       = runNumber;
+      pt.time            = epicsTime;
+      pt.hac_bcm_average = hac_bcm_average; 
+      pt.IBC1H04CRCUR2   = IBC1H04CRCUR2; 
+      pt.IPM1H04A_XPOS   = IPM1H04A_XPOS;   
+      pt.IPM1H04A_YPOS   = IPM1H04A_YPOS;   
+      pt.IPM1H04E_XPOS   = IPM1H04E_XPOS;   
+      pt.IPM1H04E_YPOS   = IPM1H04E_YPOS; 
+      fEPICS.push_back(pt);  
+      fEvtCntrEPICS++; 
+   }
+
+   delete aTree;
    delete ch; 
+
+   return 0;
 }
 //______________________________________________________________________________
 int BCMManager::LoadCalibrationCoefficients(const char *filePath){
@@ -269,47 +346,6 @@ int BCMManager::GetCalibrationCoeff(std::string dev,std::vector<double> &v,std::
 //______________________________________________________________________________
 bool BCMManager::IsBad(double v){
    return std::isinf(v) || std::isnan(v); 
-}
-//______________________________________________________________________________
-void BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
-
-   if(fIsDebug) std::cout << "[BCMManager::LoadEPICSDataFromTree]: Loading data from tree: E" << std::endl; 
-
-   double epicsTime=0,IBC1H04CRCUR2=0,hac_bcm_average=0;
-   double IPM1H04A_XPOS=0,IPM1H04A_YPOS=0; 
-   double IPM1H04E_XPOS=0,IPM1H04E_YPOS=0; 
-
-   TChain *ch = new TChain("E"); 
-   ch->Add(filePath);
-   int NL = ch->GetEntries(); 
-   TTree *aTree = ch->GetTree();
-   aTree->SetBranchAddress("hac_bcm_average",&hac_bcm_average);
-   aTree->SetBranchAddress("IPM1H04A.XPOS"  ,&IPM1H04A_XPOS  );
-   aTree->SetBranchAddress("IPM1H04A.YPOS"  ,&IPM1H04A_YPOS  );
-   aTree->SetBranchAddress("IPM1H04E.XPOS"  ,&IPM1H04E_XPOS  );
-   aTree->SetBranchAddress("IPM1H04E.YPOS"  ,&IPM1H04E_YPOS  );
-   aTree->SetBranchAddress("IBC1H04CRCUR2"  ,&IBC1H04CRCUR2  );
-   aTree->SetBranchAddress("timestamp"      ,&epicsTime      );
-
-   epicsData_t pt; 
-   for(int i=0;i<NL;i++){
-      aTree->GetEntry(i); 
-      pt.event           = fEvtCntrEPICS; 
-      pt.runNumber       = runNumber;
-      pt.time            = epicsTime;
-      pt.hac_bcm_average = hac_bcm_average; 
-      pt.IBC1H04CRCUR2   = IBC1H04CRCUR2; 
-      pt.IPM1H04A_XPOS   = IPM1H04A_XPOS;   
-      pt.IPM1H04A_YPOS   = IPM1H04A_YPOS;   
-      pt.IPM1H04E_XPOS   = IPM1H04E_XPOS;   
-      pt.IPM1H04E_YPOS   = IPM1H04E_YPOS; 
-      fEPICS.push_back(pt);  
-      fEvtCntrEPICS++; 
-   }
-
-   delete aTree;
-   delete ch; 
-
 }
 //______________________________________________________________________________
 TH1F * BCMManager::GetTH1F(const char *arm,const char *var_name,int NBin,double min,double max){

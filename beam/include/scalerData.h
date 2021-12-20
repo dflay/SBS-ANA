@@ -73,7 +73,7 @@ typedef struct scalerData {
    // print data to screen 
    int Print(std::string type){
       if(type.compare("rate")==0){
-	 std::cout << Form("event %03d, "       ,event)
+	 std::cout << Form("event %05d, "       ,event)
 	           << Form("run %05d, "         ,runNumber)
 	           << Form("time = %.3lf, "     ,time)
 	           << Form("time_num = %.3lf, " ,time_num)
@@ -86,7 +86,7 @@ typedef struct scalerData {
 	           << Form("d10 rate = %.3lf "  ,d10Rate)
 	           << Form("dnew rate = %.3lf " ,dnewRate) << std::endl;
       }else if(type.compare("cnt")==0 || type.compare("count")==0){
-	 std::cout << Form("event %03d, "      ,event)
+	 std::cout << Form("event %05d, "      ,event)
 	           << Form("run %05d, "        ,runNumber)
 	           << Form("time = %.3lf, "    ,time)
 	           << Form("time_num = %.3lf, ",time_num)
@@ -99,7 +99,7 @@ typedef struct scalerData {
 	           << Form("d10 cnt = %.3lf "  ,d10Counts)
 	           << Form("dnew cnt = %.3lf " ,dnewCounts) << std::endl;
       }else if(type.compare("current")==0){
-	 std::cout << Form("event %03d, "          ,event)
+	 std::cout << Form("event %05d, "          ,event)
 	           << Form("run %05d, "            ,runNumber)
 	           << Form("time = %.3lf, "        ,time)
 	           << Form("time_num = %.3lf, "    ,time_num)

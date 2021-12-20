@@ -37,7 +37,7 @@ typedef struct epicsData {
    }
    // print to screen 
    int Print(){
-      std::cout << Form("event %03d, "             ,event)
+      std::cout << Form("event %05d, "             ,event)
 	        << Form("run %05d, "               ,runNumber)
 	        << Form("time = %.3lf, "           ,time)
 	        << Form("IPM1H04A_XPOS = %.3lf, "  ,IPM1H04A_XPOS)

@@ -79,8 +79,12 @@ int bcmStability(const char *runPath){
    run.clear();
    bcm_util::GetStats_byRun(var[6].Data(),data,run,mean_dnew,stdev_dnew);
 
+   // if we're missing runs in the initial run list, 
+   // the analyzed run list is different (smaller) 
+   int NNR = run.size();
+
    // print to screen
-   for(int i=0;i<NR;i++){
+   for(int i=0;i<NNR;i++){
 //       std::cout << Form("run %05d: unser = %.3lf ± %.3lf, u1 = %.3lf ± %.3lf, unew = %.3lf ± %.3lf, d1 = %.3lf ± %.3lf, d3 = %.3lf ± %.3lf, d10 = %.3lf ± %.3lf, dnew = %.3lf ± %.3lf",
 // 	    (int)run[i],mean_uns[i],stdev_uns[i],mean_u1[i],stdev_u1[i],mean_unew[i],stdev_unew[i],mean_d1[i],stdev_d1[i],mean_d3[i],stdev_d3[i],mean_d10[i],stdev_d10[i],mean_dnew[i],stdev_dnew[i]) << std::endl;
       std::cout << Form("%05d,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf",
@@ -89,10 +93,12 @@ int bcmStability(const char *runPath){
                         mean_d10[i],stdev_d10[i],mean_dnew[i],stdev_dnew[i]) << std::endl;
    }
 
-   // track unser change run to run 
+   // track unser change run to run
+   double uns_thr = 2E+3; // 2 kHz => ~0.5 uA  
    double delta=0,err=0; 
+   std::vector<int> runMarker; 
    std::vector<double> deltaUnser,deltaUnserErr; 
-   for(int i=0;i<NR;i++){
+   for(int i=0;i<NNR;i++){
       if(i==0){
 	 // first run in the list 
 	 delta = 0;
@@ -100,6 +106,11 @@ int bcmStability(const char *runPath){
       }else{
 	 delta = mean_uns[i] - mean_uns[i-1];
 	 err   = TMath::Sqrt( stdev_uns[i]*stdev_uns[i] + stdev_uns[i-1]*stdev_uns[i-1] );
+      }
+      // if delta > threshold, this marks a new calibration period 
+      if(delta>uns_thr){
+	 std::cout << "Calibration set for run " << run[i] << std::endl;
+	 runMarker.push_back(run[i]); 
       } 
       deltaUnser.push_back(delta); 
       deltaUnserErr.push_back(err);
@@ -173,9 +184,16 @@ int bcmStability(const char *runPath){
    gUnserCurrent_byRun->Draw("ap");
    c2->Update(); 
    
-   TCanvas *c3 = new TCanvas("c3","Change in Unser",1200,600);
+   TCanvas *c3 = new TCanvas("c3","Change in Unser",1200,600); 
+   c3->Divide(1,2);
 
-   c3->cd();
+   c3->cd(1);
+   g[0]->Draw("alp");
+   graph_df::SetLabels(g[0],"Unser Rate","Run Number","Unser Rate [Hz]");  
+   g[0]->Draw("alp");
+   c3->Update();
+
+   c3->cd(2);
    gDeltaUnser->Draw("alp");
    graph_df::SetLabels(gDeltaUnser,"Change in Unser","Run Number","#Delta Unser Rate [Hz]");  
    gDeltaUnser->Draw("alp");

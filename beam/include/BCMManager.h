@@ -43,6 +43,7 @@ class BCMManager {
       std::vector<epicsData_t> fEPICS;
 
       bool IsBad(double v);  
+      int CheckFile(const char *filePath); 
 
    public: 
       BCMManager(const char *filePath="NONE",bool isDebug=false,const char *ccFilePath="NONE");
@@ -50,15 +51,13 @@ class BCMManager {
 
       void SetDebug(bool v=true)         { fIsDebug          = v; }
       void CalculateCurrent(bool v=true) { fCalculateCurrent = v; }  
-
-      void Clear(); 
-      void LoadFile(const char *filePath,int runNumber=0);
-      void LoadDataFromTree(const char *filePath,const char *treeName,int runNumber=0);
-      void LoadEPICSDataFromTree(const char *filePath,int runNumber=0);
-
-      int  LoadCalibrationCoefficients(const char *filePath); 
-
       void Print(const char *arm);
+      void Clear(); 
+
+      int LoadFile(const char *filePath,int runNumber=0);
+      int LoadDataFromTree(const char *filePath,const char *treeName,int runNumber=0);
+      int LoadEPICSDataFromTree(const char *filePath,int runNumber=0);
+      int LoadCalibrationCoefficients(const char *filePath); 
 
       int GetCalibrationCoeff(std::string dev,std::vector<double> &v,std::vector<double> &dv); 
       int ApplyCalibrationCoeff(scalerData_t &data); 

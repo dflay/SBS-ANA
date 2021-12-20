@@ -46,7 +46,7 @@ for line in lines:
       print("Run {0:5d}: Found {1:3d} segments".format(int(run),int(nSeg) ) ) 
       # build an output file
       RUN.append(run) 
-      NSEG.append(nSeg)  
+      NSEG.append(nSeg-1)  # nseg starts from 0!  
    cntr = cntr + 1
 
 # now print to a file 

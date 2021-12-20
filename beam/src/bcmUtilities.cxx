@@ -30,28 +30,8 @@ namespace bcm_util {
       double mean=0,stdev=0,theRun=0,theValue=0;
       const int NEV = data.size();
       for(int i=0;i<NEV;i++){
-	 theRun = data[i].runNumber;
-	 if(var.compare("unser.cnt")==0)     theValue = data[i].unserCounts;
-	 if(var.compare("unser.rate")==0)    theValue = data[i].unserRate;
-	 if(var.compare("unser.current")==0) theValue = data[i].unserCurrent;
-	 if(var.compare("u1.cnt")==0)        theValue = data[i].u1Counts;
-	 if(var.compare("u1.rate")==0)       theValue = data[i].u1Rate;
-	 if(var.compare("u1.current")==0)    theValue = data[i].u1Current;
-	 if(var.compare("unew.cnt")==0)      theValue = data[i].unewCounts;
-	 if(var.compare("unew.rate")==0)     theValue = data[i].unewRate;
-	 if(var.compare("unew.current")==0)  theValue = data[i].unewCurrent;
-	 if(var.compare("d1.cnt")==0)        theValue = data[i].d1Counts;
-	 if(var.compare("d1.rate")==0)       theValue = data[i].d1Rate;
-	 if(var.compare("d1.current")==0)    theValue = data[i].d1Current;
-	 if(var.compare("d3.cnt")==0)        theValue = data[i].d3Counts;
-	 if(var.compare("d3.rate")==0)       theValue = data[i].d3Rate;
-	 if(var.compare("d3.current")==0)    theValue = data[i].d3Current;
-	 if(var.compare("d10.cnt")==0)       theValue = data[i].d3Counts;
-	 if(var.compare("d10.rate")==0)      theValue = data[i].d3Rate;
-	 if(var.compare("d10.current")==0)   theValue = data[i].d3Current;
-	 if(var.compare("dnew.cnt")==0)      theValue = data[i].dnewCounts;
-	 if(var.compare("dnew.rate")==0)     theValue = data[i].dnewRate;
-	 if(var.compare("dnew.current")==0)  theValue = data[i].dnewCurrent;
+	 theRun   = data[i].runNumber;
+         theValue = data[i].getValue(var);  
 	 if(run_prev==theRun){
 	    v.push_back(theValue);
 	 }else{
@@ -73,7 +53,7 @@ namespace bcm_util {
       mean  = math_df::GetMean<double>(v);
       stdev = math_df::GetStandardDeviation<double>(v);
       // save results
-      RUN.push_back(theRun);
+      RUN.push_back(run_prev);
       MEAN.push_back(mean);
       STDEV.push_back(stdev);
       return 0;

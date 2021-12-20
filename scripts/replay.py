@@ -7,7 +7,7 @@ import sys
 import datetime
 import util_df  
 
-isDebug = True
+isDebug = False 
 
 NARG = len(sys.argv)
 
