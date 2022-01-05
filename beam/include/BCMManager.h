@@ -25,7 +25,8 @@
 class BCMManager {
 
    private:
-      bool fIsDebug,fCalculateCurrent; 
+      bool fIsDebug,fCalculateCurrent;
+      int fVerbosity;  
       int fEvtCntrLeft,fEvtCntrSBS,fEvtCntrEPICS;
       double fLastTimeLeft,fLastTimeSBS; 
 
@@ -44,11 +45,15 @@ class BCMManager {
 
       bool IsBad(double v);  
       int CheckFile(const char *filePath); 
+      int LoadCalibrationCoefficients(const char *type,const char *filePath);
+      int GetCalibrationCoeff(int run,std::string dev,calibCoeff_t &data); 
+      int ApplyCalibrationCoeff(scalerData_t &data); 
 
    public: 
       BCMManager(const char *filePath="NONE",bool isDebug=false,const char *ccFilePath="NONE");
       ~BCMManager(); 
 
+      void SetVerbosity(int v)           { fVerbosity        = v; } 
       void SetDebug(bool v=true)         { fIsDebug          = v; }
       void CalculateCurrent(bool v=true) { fCalculateCurrent = v; }  
       void Print(const char *arm);
@@ -57,10 +62,7 @@ class BCMManager {
       int LoadFile(const char *filePath,int runNumber=0);
       int LoadDataFromTree(const char *filePath,const char *treeName,int runNumber=0);
       int LoadEPICSDataFromTree(const char *filePath,int runNumber=0);
-      int LoadCalibrationCoefficients(const char *type,const char *filePath); 
-
-      int GetCalibrationCoeff(std::string dev,std::vector<double> &v,std::vector<double> &dv); 
-      int ApplyCalibrationCoeff(scalerData_t &data); 
+      int LoadCalibrationCoefficients(const char *dirName); 
 
       int GetVector(const char *arm,const char *var,std::vector<double> &v); 
       int GetVector_scaler(const char *arm,std::vector<scalerData_t> &data); 

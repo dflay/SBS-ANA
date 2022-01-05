@@ -29,7 +29,8 @@ int bcmStability(const char *runPath){
    rc = bcm_util::LoadRuns(runPath,prefix,runList);
    if(rc!=0) return 1; 
 
-   BCMManager *mgr = new BCMManager("NONE",false,"./input/calib-coeff_12-01-21.csv");
+   // BCMManager *mgr = new BCMManager("NONE",false,"./input/calib-coeff_12-01-21.csv");
+   BCMManager *mgr = new BCMManager("NONE",false,"./output/calib-coeff");
 
    TString filePath;  
    const int NR = runList.size();  
@@ -111,7 +112,7 @@ int bcmStability(const char *runPath){
       }
       // if delta > threshold, this marks a new calibration period 
       if(delta>uns_thr){
-	 std::cout << "Calibration set for run " << run[i] << std::endl;
+	 // std::cout << "Calibration set for run " << run[i] << std::endl;
 	 runMarker.push_back(run[i]); 
       } 
       deltaUnser.push_back(delta); 
@@ -128,10 +129,18 @@ int bcmStability(const char *runPath){
    }
 
    TGraphErrors *gUnserCurrent_byRun = bcm_util::GetTGraphErrors_byRun("unser.current",data);
-   graph_df::SetParameters(gUnserCurrent_byRun,20,kBlack);
+   graph_df::SetParameters(gUnserCurrent_byRun,20,kBlue);
 
    TGraph *gUnserCurrent_byEvent = mgr->GetTGraph("sbs","event","unser.current");  
-   graph_df::SetParameters(gUnserCurrent_byEvent,20,kBlack);
+   graph_df::SetParameters(gUnserCurrent_byEvent,20,kBlue);
+
+   // make a line at 0 uA 
+
+   int runDelta = 50; 
+   int runMin = run[0] - runDelta; 
+   int runMax = run[NNR-1] + runDelta; 
+   TLine *zero = new TLine(runMin,0,runMax,0); 
+   zero->SetLineColor(kBlack); 
 
    TString Title,yAxisTitle;
    TString xAxisTitle = Form("Run Number");
@@ -175,15 +184,17 @@ int bcmStability(const char *runPath){
    c2->Divide(1,2);
  
    c2->cd(1);
-   gUnserCurrent_byEvent->Draw("alp");
+   gUnserCurrent_byEvent->Draw("ap");
    graph_df::SetLabels(gUnserCurrent_byEvent,"Unser Current","Event","Unser Current [#muA]");
-   gUnserCurrent_byEvent->Draw("alp");
+   gUnserCurrent_byEvent->Draw("ap");
    c2->Update(); 
 
    c2->cd(2);
    gUnserCurrent_byRun->Draw("ap");
    graph_df::SetLabels(gUnserCurrent_byRun,"Unser Current","Run Number","Unser Current [#muA]");
+   gUnserCurrent_byRun->GetXaxis()->SetLimits(runMin,runMax);
    gUnserCurrent_byRun->Draw("ap");
+   zero->Draw("same"); 
    c2->Update(); 
    
    TCanvas *c3 = new TCanvas("c3","Change in Unser",1200,600); 

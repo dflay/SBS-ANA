@@ -87,32 +87,41 @@ namespace bcm_util {
    int WriteToFile_cc(const char *outpath,std::vector<calibCoeff_t> data){
       // write the calibration coefficients to file
       const int NROW = data.size();
-      const int NCOL = 5;
+      const int NCOL = 9;
       std::vector<std::string> dev;
+      std::vector<int> runMin,runMax;
+      std::vector<double> pedestal,pedestalErr; 
       std::vector<double> offset,offsetErr; 
       std::vector<double> gain,gainErr; 
       for(int i=0;i<NROW;i++){
 	 dev.push_back( data[i].dev ); 
+	 runMin.push_back(data[i].runMin); 
+	 runMax.push_back(data[i].runMax); 
+	 pedestal.push_back( data[i].pedestal ); 
+	 pedestalErr.push_back( data[i].pedestalErr ); 
 	 offset.push_back( data[i].offset ); 
 	 offsetErr.push_back( data[i].offsetErr ); 
 	 gain.push_back( data[i].slope ); 
 	 gainErr.push_back( data[i].slopeErr ); 
       } 
 
-      std::string header = "dev,offset,offsetErr,gain,gainErr";
+      std::string header = "dev,runMin,runMax,pedestal,pedestalErr,offset,offsetErr,gain,gainErr";
  
       CSVManager *csv = new CSVManager(); 
       csv->InitTable(NROW,NCOL); 
       csv->SetColumn_str(0,dev); 
-      csv->SetColumn<double>(1,offset);  
-      csv->SetColumn<double>(2,offsetErr);  
-      csv->SetColumn<double>(3,gain);  
-      csv->SetColumn<double>(4,gainErr); 
+      csv->SetColumn<int>(1,runMin);  
+      csv->SetColumn<int>(2,runMax);  
+      csv->SetColumn<double>(3,pedestal);  
+      csv->SetColumn<double>(4,pedestalErr);  
+      csv->SetColumn<double>(5,offset);  
+      csv->SetColumn<double>(6,offsetErr);  
+      csv->SetColumn<double>(7,gain);  
+      csv->SetColumn<double>(8,gainErr); 
       csv->SetHeader(header); 
       csv->WriteFile(outpath); 
 
       delete csv; 
- 
       return 0;
    }
    //______________________________________________________________________________
@@ -150,6 +159,79 @@ namespace bcm_util {
 
       delete csv;
       return 0;
+   }
+   //______________________________________________________________________________
+   int LoadFittedOffsetGainData(const char *inpath,std::vector<calibCoeff_t> &data){
+      // load fitted offset and slope (gain) data from BCM or Unser calibration analysis  
+      // note: this is a component of a calibCoeff data type,
+      // so we fill a vector of calibCoeff structs
+      CSVManager *csv = new CSVManager(); 
+      int rc = csv->ReadFile(inpath,true); 
+      if(rc!=0){
+	 delete csv;
+	 return 1;
+      }
+     
+      // grab the data we want 
+      std::vector<std::string> dev;
+      std::vector<double> offset,offsetErr,gain,gainErr; 
+      csv->GetColumn_byName_str("dev",dev); 
+      csv->GetColumn_byName<double>("offset"   ,offset);  
+      csv->GetColumn_byName<double>("offsetErr",offsetErr);  
+      csv->GetColumn_byName<double>("gain"     ,gain); 
+      csv->GetColumn_byName<double>("gainErr"  ,gainErr);
+
+      // fill a vector of type calibCoeff
+      calibCoeff_t v;
+      const int N = dev.size();
+      for(int i=0;i<N;i++){
+         v.dev       = dev[i];
+	 v.offset    = offset[i];
+	 v.offsetErr = offsetErr[i];
+	 v.slope     = gain[i];
+	 v.slopeErr  = gainErr[i];
+         data.push_back(v);  
+      }
+
+      delete csv; 
+      return 0; 
+   }
+   //______________________________________________________________________________
+   int LoadPedestalData(const char *inpath,std::vector<calibCoeff_t> &data){
+      // load pedestal data
+      // note: this is a component of a calibCoeff data type,
+      // so we fill a vector of calibCoeff structs
+      CSVManager *csv = new CSVManager(); 
+      int rc = csv->ReadFile(inpath,true); 
+      if(rc!=0){
+	 delete csv;
+	 return 1;
+      }
+     
+      // grab the data we want 
+      std::vector<std::string> dev;
+      std::vector<int> runMin,runMax; 
+      std::vector<double> ped,pedErr; 
+      csv->GetColumn_byName_str("dev",dev); 
+      csv->GetColumn_byName<int>("runMin",runMin);  
+      csv->GetColumn_byName<int>("runMax",runMax);  
+      csv->GetColumn_byName<double>("pedestal"   ,ped); 
+      csv->GetColumn_byName<double>("pedestalErr",pedErr);
+
+      // fill a vector of type calibCoeff
+      calibCoeff_t v;
+      const int N = ped.size();
+      for(int i=0;i<N;i++){
+         v.dev         = dev[i];
+         v.runMin      = runMin[i];  
+         v.runMax      = runMax[i];  
+	 v.pedestal    = ped[i];
+	 v.pedestalErr = pedErr[i];
+         data.push_back(v);  
+      }
+
+      delete csv; 
+      return 0; 
    }
    //______________________________________________________________________________
    int LoadProducedVariables(const char *inpath,std::vector<producedVariable_t> &data){

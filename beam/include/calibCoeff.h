@@ -10,8 +10,8 @@ typedef struct calibCoeff {
    double pedestalErr;   // pedestal (beam off) error [Hz]
    double offset;        // fitted offset [Hz]  
    double offsetErr;     // fitted offset error [Hz]   
-   double slope;         // fitted slope  [Hz/uA] 
-   double slopeErr;      // fitted slope error [Hz/uA] 
+   double slope;         // fitted slope (gain)  [Hz/uA] 
+   double slopeErr;      // fitted slope (gain) error [Hz/uA] 
    int runMin;           // run range: minimum    
    int runMax;           // run range: maximum   
    calibCoeff(): 

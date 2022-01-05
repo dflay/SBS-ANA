@@ -18,7 +18,9 @@ namespace bcm_util {
    int Print(producedVariable_t data); 
    int GetData(std::string var,std::vector<producedVariable_t> data,std::vector<double> &x,std::vector<double> &dx); 
    int WriteToFile(const char *outpath,std::vector<producedVariable_t> data); 
-   int WriteToFile_cc(const char *outpath,std::vector<calibCoeff_t> data); 
+   int WriteToFile_cc(const char *outpath,std::vector<calibCoeff_t> data);
+   int LoadFittedOffsetGainData(const char *inpath,std::vector<calibCoeff_t> &data); 
+   int LoadPedestalData(const char *inpath,std::vector<calibCoeff_t> &data); 
    int LoadProducedVariables(const char *inpath,std::vector<producedVariable_t> &data);
    int LoadConfigPaths(const char *inpath,std::vector<std::string> &label,std::vector<std::string> &path); 
    int LoadRuns(const char *inpath,TString &prefix,std::vector<codaRun_t> &runList); 

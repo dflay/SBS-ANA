@@ -1,8 +1,9 @@
 #include "../include/BCMManager.h"
 //______________________________________________________________________________
-BCMManager::BCMManager(const char *filePath,bool isDebug,const char *ccFilePath){
+BCMManager::BCMManager(const char *filePath,bool isDebug,const char *ccDirPath){
    fIsDebug          = isDebug; 
-   fCalculateCurrent = false;  
+   fCalculateCurrent = false; 
+   fVerbosity        = 0;  
    fEvtCntrLeft      = 0;  
    fEvtCntrSBS       = 0;  
    fEvtCntrEPICS     = 0; 
@@ -14,11 +15,10 @@ BCMManager::BCMManager(const char *filePath,bool isDebug,const char *ccFilePath)
       LoadFile(filePath);
    }
 
-   // std::string cc_filePath = ccFilePath; 
-   // if(cc_filePath.compare("NONE")!=0){
-   //    fCalculateCurrent = true;
-   //    LoadCalibrationCoefficients(ccFilePath);
-   // } 
+   std::string cc_dirPath = ccDirPath; 
+   if(cc_dirPath.compare("NONE")!=0){
+      LoadCalibrationCoefficients(ccDirPath);
+   } 
  
 }
 //______________________________________________________________________________
@@ -234,6 +234,21 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
    return 0;
 }
 //______________________________________________________________________________
+int BCMManager::LoadCalibrationCoefficients(const char *dirName){
+   fCalculateCurrent = true;
+   // load calibration coefficients from a specific directory/production set 
+   const int N = 7; 
+   std::string bcm[N] = {"unser","u1","unew","d1","d3","d10","dnew"};
+
+   char inpath[200]; 
+
+   for(int i=0;i<N;i++){
+      sprintf(inpath,"%s/calib-coeff_%s.csv",dirName,bcm[i].c_str()); 
+      LoadCalibrationCoefficients(bcm[i].c_str(),inpath); 
+   } 
+   return 0;
+}
+//______________________________________________________________________________
 int BCMManager::LoadCalibrationCoefficients(const char *type,const char *filePath){
    std::string Type = type; 
 
@@ -247,12 +262,12 @@ int BCMManager::LoadCalibrationCoefficients(const char *type,const char *filePat
    csv->GetColumn_byName_str("dev",dev);
    csv->GetColumn_byName<int>("runMin",runMin);  
    csv->GetColumn_byName<int>("runMax",runMax);  
-   csv->GetColumn_byName<double>("pedestal_Hz"   ,ped); 
-   csv->GetColumn_byName<double>("pedestalErr_Hz",pedErr); 
-   csv->GetColumn_byName<double>("offset_Hz"     ,offset); 
-   csv->GetColumn_byName<double>("offsetErr_Hz"  ,offsetErr); 
-   csv->GetColumn_byName<double>("gain_HzuA"     ,gain); 
-   csv->GetColumn_byName<double>("gainErr_HzuA"  ,gainErr); 
+   csv->GetColumn_byName<double>("pedestal"   ,ped); 
+   csv->GetColumn_byName<double>("pedestalErr",pedErr); 
+   csv->GetColumn_byName<double>("offset"     ,offset); 
+   csv->GetColumn_byName<double>("offsetErr"  ,offsetErr); 
+   csv->GetColumn_byName<double>("gain"       ,gain); 
+   csv->GetColumn_byName<double>("gainErr"    ,gainErr); 
 
    calibCoeff_t cc; 
    const int ND = dev.size();
@@ -290,15 +305,16 @@ int BCMManager::ApplyCalibrationCoeff(scalerData_t &data){
    dev.push_back("dnew");
 
    double PED=0,OFFSET=0,GAIN=0;
-   std::vector<double> v,dv;  
+   int rc=0;  
 
-   int rc=0; // if return code = 0, we found the calibration coefficients, apply them 
+   calibCoeff_t ccData;
  
    const int ND = dev.size();
    for(int i=0;i<ND;i++){
-      rc = GetCalibrationCoeff(dev[i],v,dv);
-      PED = v[0]; OFFSET = v[1]; GAIN = v[2];
-      if(rc==0){
+      rc = GetCalibrationCoeff(data.runNumber,dev[i],ccData);
+      PED = ccData.pedestal; OFFSET = ccData.offset; GAIN = ccData.slope;
+      if(rc==0){  
+         // if rc = 0, we found the calibration coefficients; apply them
 	 if(dev[i].compare("unser")==0){
 	    data.unserCurrent = (data.unserRate - PED - OFFSET)/GAIN;
 	 }else if(dev[i].compare("u1")==0){
@@ -315,48 +331,49 @@ int BCMManager::ApplyCalibrationCoeff(scalerData_t &data){
 	    data.dnewCurrent = (data.dnewRate - PED - OFFSET)/GAIN;
 	 }
       }
-      // set up for next device 
-      v.clear(); dv.clear(); 
    } 
    return 0;
 }
 //______________________________________________________________________________
-int BCMManager::GetCalibrationCoeff(std::string dev,std::vector<double> &v,std::vector<double> &dv){
-   // get calibration coefficients by device
-   int rc=0;  
-   const int N = fCC.size();
-   for(int i=0;i<N;i++){
-      if(dev.compare(fCC[i].dev)==0){
-	 v.push_back(fCC[i].pedestal);
-	 v.push_back(fCC[i].offset);  
-	 v.push_back(fCC[i].slope);  
-	 dv.push_back(fCC[i].pedestalErr);
-	 dv.push_back(fCC[i].offsetErr);  
-	 dv.push_back(fCC[i].slopeErr);  
+int BCMManager::GetCalibrationCoeff(int run,std::string dev,calibCoeff_t &data){
+   // get calibration coefficients by device, and based on run number
+   int NGRP=0;
+   std::vector<calibCoeff_t> cc; 
+   if(dev.compare("unser")==0){
+      NGRP = fccUnser.size();
+      for(int i=0;i<NGRP;i++) cc.push_back(fccUnser[i]); 
+   }else if(dev.compare("u1")==0){
+      NGRP = fccU1.size();
+      for(int i=0;i<NGRP;i++) cc.push_back(fccU1[i]); 
+   }else if(dev.compare("unew")==0){
+      NGRP = fccUnew.size();
+      for(int i=0;i<NGRP;i++) cc.push_back(fccUnew[i]); 
+   }else if(dev.compare("d1")==0){
+      NGRP = fccD1.size();
+      for(int i=0;i<NGRP;i++) cc.push_back(fccD1[i]); 
+   }else if(dev.compare("d3")==0){
+      NGRP = fccD3.size();
+      for(int i=0;i<NGRP;i++) cc.push_back(fccD3[i]); 
+   }else if(dev.compare("d10")==0){
+      NGRP = fccD10.size();
+      for(int i=0;i<NGRP;i++) cc.push_back(fccD10[i]); 
+   }else if(dev.compare("dnew")==0){
+      NGRP = fccDnew.size();
+      for(int i=0;i<NGRP;i++) cc.push_back(fccDnew[i]); 
+   }
+   // find coeffs by run group 
+   for(int i=0;i<NGRP;i++){
+      if((run>=cc[i].runMin)&&(run<=cc[i].runMax)){
+	 // matched run! this is what we need 
+	 data = cc[i];  
       }
    }
-   // check if we found data
-   int NV = v.size();
-   if(NV==0){
-      std::cout << "[BCMManager::GetCalibrationCoeff]: WARNING! No calibration coefficients for device = " << dev << "! "; 
-      std::cout << "Defaulting to ped = 0, offset = 0, gain = 1" << std::endl;
-      v.push_back(0);
-      v.push_back(0);
-      v.push_back(1);
-      dv.push_back(0);
-      dv.push_back(0);
-      dv.push_back(0);
-      rc = 1;
+   // now check the gain to avoid div by zero error 
+   if(data.slope==0){
+      if(fVerbosity>5) std::cout << "[BCMManager::GetCalibrationCoeff]: WARNING! Invalid gain = 0! Defaulting to gain = 1" << std::endl;
+      data.slope = 1; 
    }
-   // check gain value (avoid divide by zero error) 
-   if(v[2]==0){
-      std::cout << "[BCMManager::GetCalibrationCoeff]: WARNING! Gain = 0 for device = " << dev << "! ";
-      std::cout << "Setting to 1." << std::endl;
-      v[2] = 1; 
-      dv[2] = 0; 
-      rc = 1;
-   }
-   return rc;
+   return 0;
 }
 //______________________________________________________________________________
 bool BCMManager::IsBad(double v){
