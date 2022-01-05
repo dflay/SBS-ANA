@@ -40,15 +40,17 @@ int bcmStability(const char *runPath){
    }
 
    // do stats by run number 
-  
    std::vector<scalerData_t> rawData,data;
-   mgr->GetVector_scaler("sbs",rawData);   
+   mgr->GetVector_scaler("sbs",rawData);  
 
    // load cuts 
    std::vector<cut_t> cutList; 
    cut_util::LoadCuts("./input/cut-list_bcm-ped.csv",cutList);
    // apply cuts  
    cut_util::ApplyCuts(cutList,rawData,data);
+
+   // sort the data by run number 
+   std::sort(data.begin(),data.end(),compareScalerData_byRun); 
 
    const int N = 7; 
    TString var[N] = {"unser.rate","u1.rate","unew.rate","d1.rate","d3.rate","d10.rate","dnew.rate"};

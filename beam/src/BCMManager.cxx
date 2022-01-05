@@ -14,11 +14,11 @@ BCMManager::BCMManager(const char *filePath,bool isDebug,const char *ccFilePath)
       LoadFile(filePath);
    }
 
-   std::string cc_filePath = ccFilePath; 
-   if(cc_filePath.compare("NONE")!=0){
-      fCalculateCurrent = true;
-      LoadCalibrationCoefficients(ccFilePath);
-   } 
+   // std::string cc_filePath = ccFilePath; 
+   // if(cc_filePath.compare("NONE")!=0){
+   //    fCalculateCurrent = true;
+   //    LoadCalibrationCoefficients(ccFilePath);
+   // } 
  
 }
 //______________________________________________________________________________
@@ -93,6 +93,8 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
    } 
  
    TTree *aTree = ch->GetTree();
+   if(aTree==nullptr) return 1; 
+
    aTree->SetBranchAddress(Form("%s.bcm.unser.cnt" ,arm.c_str()),&unser_cnt );
    aTree->SetBranchAddress(Form("%s.bcm.unser.rate",arm.c_str()),&unser_rate);
    aTree->SetBranchAddress(Form("%s.bcm.u1.cnt"    ,arm.c_str()),&u1_cnt    );
@@ -232,14 +234,19 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
    return 0;
 }
 //______________________________________________________________________________
-int BCMManager::LoadCalibrationCoefficients(const char *filePath){
+int BCMManager::LoadCalibrationCoefficients(const char *type,const char *filePath){
+   std::string Type = type; 
+
    CSVManager *csv = new CSVManager();
    csv->ReadFile(filePath,true); 
 
-   std::vector<std::string> dev; 
+   std::vector<std::string> dev;
+   std::vector<int> runMin,runMax;  
    std::vector<double> ped,pedErr,offset,offsetErr,gain,gainErr;
 
-   csv->GetColumn_byName_str("dev",dev); 
+   csv->GetColumn_byName_str("dev",dev);
+   csv->GetColumn_byName<int>("runMin",runMin);  
+   csv->GetColumn_byName<int>("runMax",runMax);  
    csv->GetColumn_byName<double>("pedestal_Hz"   ,ped); 
    csv->GetColumn_byName<double>("pedestalErr_Hz",pedErr); 
    csv->GetColumn_byName<double>("offset_Hz"     ,offset); 
@@ -251,13 +258,21 @@ int BCMManager::LoadCalibrationCoefficients(const char *filePath){
    const int ND = dev.size();
    for(int i=0;i<ND;i++){
       cc.dev         = dev[i];
+      cc.runMin      = runMin[i]; 
+      cc.runMax      = runMax[i]; 
       cc.pedestal    = ped[i];  
       cc.pedestalErr = pedErr[i];  
       cc.offset      = offset[i];  
       cc.offsetErr   = offsetErr[i];  
       cc.slope       = gain[i];  
       cc.slopeErr    = gainErr[i];  
-      fCC.push_back(cc); 
+      if( Type.compare("unser")==0) fccUnser.push_back(cc); 
+      if( Type.compare("u1")==0   ) fccU1.push_back(cc); 
+      if( Type.compare("unew")==0 ) fccUnew.push_back(cc); 
+      if( Type.compare("d1")==0   ) fccD1.push_back(cc); 
+      if( Type.compare("d3")==0   ) fccD3.push_back(cc); 
+      if( Type.compare("d10")==0  ) fccD10.push_back(cc); 
+      if( Type.compare("dnew")==0 ) fccDnew.push_back(cc); 
    }
    delete csv;
    return 0; 

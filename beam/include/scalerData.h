@@ -114,6 +114,12 @@ typedef struct scalerData {
       }
       return 0;
    } 
-} scalerData_t; 
+} scalerData_t;
+
+// sorting rule 
+bool compareScalerData_byRun(scalerData s1,scalerData s2){ 
+   if(s1.runNumber < s2.runNumber) return true;
+   return false; 
+} 
 
 #endif 

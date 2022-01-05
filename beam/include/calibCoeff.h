@@ -19,7 +19,7 @@ typedef struct calibCoeff {
       pedestal(0),pedestalErr(0),
       offset(0),offsetErr(0),
       slope(0),slopeErr(0),
-      runMin(0),runMax(0)
+      runMin(-1),runMax(-1)
    {}
 } calibCoeff_t; 
 

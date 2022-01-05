@@ -11,13 +11,13 @@ isDebug = False
 
 NARG = len(sys.argv)
 
-if(NARG==3):
+if(NARG==2):
    inpath = sys.argv[1]
-   runKey = int(sys.argv[2])
 else:
-   print("[replay]: ERROR!  Need two arguments: input-file-path run-key")
-   print("          input-file-path: absolute path to file with run numbers (must contain a header line)") 
-   print("          run-key: column index for run number")
+   print("[replay]: ERROR!  Need one argument: input-file-path")
+   print("          input-file-path: path to file with run numbers (MUST contain a header line)") 
+   print("          header must indicate which column the run is: run, Run, or RUN")
+   print("          example: kin,run,info")
    sys.exit(1)
 
 # get the date 
@@ -25,12 +25,13 @@ theDate = util_df.getDate()
 theTime = util_df.getTime()  
 
 print("Reading data from file: {0}".format(inpath) )
-print("Run key: {0}".format(runKey) )
-
 f = open(inpath,"r")
 
 lines = f.readlines()
 print("NL = {0}".format(len(lines)))
+
+# find the run key 
+runKey = util_df.getRunKey(lines[0])
 
 entries = []
 

@@ -36,7 +36,7 @@ class BCMManager {
       // calibration coefficients for multiple run ranges 
       std::vector<calibCoeff_t> fccUnser;
       std::vector<calibCoeff_t> fccU1,fccUnew;
-      std::vector<calibCoeff_t> fccD1,fccD3,fCCd10,fccDnew;
+      std::vector<calibCoeff_t> fccD1,fccD3,fccD10,fccDnew;
 
       // data structs to hold scaler data  
       std::vector<scalerData_t> fLeft,fSBS;
@@ -57,7 +57,7 @@ class BCMManager {
       int LoadFile(const char *filePath,int runNumber=0);
       int LoadDataFromTree(const char *filePath,const char *treeName,int runNumber=0);
       int LoadEPICSDataFromTree(const char *filePath,int runNumber=0);
-      int LoadCalibrationCoefficients(const char *filePath); 
+      int LoadCalibrationCoefficients(const char *type,const char *filePath); 
 
       int GetCalibrationCoeff(std::string dev,std::vector<double> &v,std::vector<double> &dv); 
       int ApplyCalibrationCoeff(scalerData_t &data); 

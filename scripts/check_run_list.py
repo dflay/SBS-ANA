@@ -6,16 +6,17 @@
 
 import os
 import sys
+import util_df
 
 NARG = len(sys.argv)
 
-if(NARG==3):
+if(NARG==2):
    inpath = sys.argv[1]
-   runKey = int(sys.argv[2])
 else:
-   print("[get_run_list]: ERROR!  Need two arguments: input-file-path run-key")
-   print("                input-file-path: absolute path to file with run numbers (must contain a header line)")
-   print("                run-key: column index for run number")
+   print("[check_run_list]: ERROR!  Need one argument: input-file-path")
+   print("                  input-file-path: path to file with run numbers (MUST contain a header line)")
+   print("                  header must indicate which column the run is: run, Run, or RUN")
+   print("                  example: kin,run,info")
    sys.exit(1)
 
 print("Reading data from file: {0}".format(inpath) )
@@ -26,10 +27,12 @@ f = open(inpath,"r")
 lines = f.readlines()
 print("NL = {0}".format(len(lines)))
 
-entries = []
+# find the run key 
+runKey = util_df.getRunKey(lines[0]) 
 
-RUN  = [] 
-NSEG = [] 
+entries = []
+RUN     = [] 
+NSEG    = [] 
 
 cntr=0
 for line in lines:
@@ -40,9 +43,9 @@ for line in lines:
       # print(cmd)
       os.system(cmd)
       # read back what we found 
-      lsFile = open("test.txt","r") 
+      lsFile   = open("test.txt","r") 
       fileList = lsFile.readlines() 
-      nSeg = len(fileList) 
+      nSeg     = len(fileList) 
       print("Run {0:5d}: Found {1:3d} segments".format(int(run),int(nSeg) ) ) 
       # build an output file
       RUN.append(run) 
