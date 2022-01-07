@@ -19,12 +19,13 @@ def getTime():
 #_______________________________________________________________________________
 def getRunKey(inputStr):
    # find the index that matches the pattern indicated below
-   # and return that index  
+   # and return that index 
+   # input string must be comma separated  
    runKey = -1
    keys   = inputStr.split(',')
    M      = len(keys)
    for i in xrange(0,M):
       if(keys[i]=="run" or keys[i]=="Run" or keys[i]=="RUN"):
          runKey = i
-         print("FOUND: run key = {0}".format(runKey) )
+         print( "[util_df::getRunKey]: FOUND: run key = {0}".format(runKey) )
    return runKey 

@@ -6,25 +6,27 @@
 
 import os
 import sys
+import util_df
 
 NARG = len(sys.argv)
 
-if(NARG==3):
+if(NARG==2):
    inpath = sys.argv[1]
-   runKey = int(sys.argv[2])
 else:
-   print("[get_run_list]: ERROR!  Need two arguments: input-file-path run-key")
-   print("                input-file-path: absolute path to file with run numbers (must contain a header line)")
-   print("                run-key: column index for run number")
+   print("[get_run_list]: ERROR!  Need one arguments: input-file-path")
+   print("                input-file-path: absolute path to file with run numbers (MUST contain a header line)")
+   print("                header must indicate which column the run is: run, Run, or RUN")
+   print("                example: kin,run,info")
    sys.exit(1)
 
 print("Reading data from file: {0}".format(inpath) )
-print("Run key: {0}".format(runKey) )
 
 f = open(inpath,"r")
 
 lines = f.readlines()
 print("NL = {0}".format(len(lines)))
+
+runKey = util_df.getRunKey(lines[0]) 
 
 entries = []
 

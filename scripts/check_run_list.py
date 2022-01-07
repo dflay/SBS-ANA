@@ -20,7 +20,6 @@ else:
    sys.exit(1)
 
 print("Reading data from file: {0}".format(inpath) )
-print("Run key: {0}".format(runKey) )
 
 f = open(inpath,"r")
 

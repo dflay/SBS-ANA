@@ -204,6 +204,10 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
 
    int NL = ch->GetEntries(); 
    TTree *aTree = ch->GetTree();
+   if(aTree==nullptr){
+      return 1;
+   }
+
    aTree->SetBranchAddress("hac_bcm_average",&hac_bcm_average);
    aTree->SetBranchAddress("IPM1H04A.XPOS"  ,&IPM1H04A_XPOS  );
    aTree->SetBranchAddress("IPM1H04A.YPOS"  ,&IPM1H04A_YPOS  );

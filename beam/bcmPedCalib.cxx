@@ -24,7 +24,6 @@ int WriteToFile_unser(const char *outpath,std::vector<int> runMin,std::vector<in
 
 int bcmPedCalib(const char *runPath){
 
-
    char oprefix[200]; 
    sprintf(oprefix,"./output/pedestal");
 
@@ -145,28 +144,32 @@ int bcmPedCalib(const char *runPath){
 
    // loop over all valid runs, identify the run group, store data, get stats
    double mean=0,stdev=0;  
-   std::vector<double> x,dx,MU,SIG;  
+   std::vector<double> rr,x,dx,MU,SIG;  
    int M = RUN_MIN.size();
    int NS=0;
    for(int i=0;i<M;i++){
       for(int j=0;j<NNR;j++){
 	 if(run[j]>=RUN_MIN[i]&&run[j]<=RUN_MAX[i]){
-	    x.push_back( mean_uns[j] );
-	    dx.push_back( stdev_uns[j] );  
+	    if(stdev_uns[j]!=0){
+	       x.push_back( mean_uns[j] );
+	       dx.push_back( stdev_uns[j] ); 
+	    } 
 	 }
       }
       // gathered all runs for this group, get stats
-      NS = x.size(); 
+      NS = x.size();
       GetStats(x,dx,mean,stdev);
       MU.push_back(mean); 
       if(NS==1){
-	 // only one run, use stdev of that run 
+	 // only one run, use stdev of that run
+	 std::cout << "WARNING: only 1 run for group " << i+1 << std::endl;  
 	 SIG.push_back(dx[0]); 
       }else{
 	 SIG.push_back(stdev);
       } 
       std::cout << Form("Group %d: %d--%d, %.3lf, %.3lf",i+1,RUN_MIN[i],RUN_MAX[i],MU[i],SIG[i]) << std::endl;  
       // set up for next group
+      rr.clear();
       x.clear();
       dx.clear();
    }
