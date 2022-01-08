@@ -5,7 +5,7 @@
 
 typedef struct scalerData {
    std::string arm;       // arm (Left, sbs, or E) 
-   std::string info;      // user notes  
+   std::string info;      // user notes 
    double time;           // time in seconds                    
    double time_num;       // time numerator: clock counts                
    double time_den;       // time denominator: clock rate
