@@ -28,7 +28,10 @@ class BeamManager {
       bool fIsDebug,fCalculateCurrent;
       int fVerbosity;  
       int fEvtCntrLeft,fEvtCntrSBS,fEvtCntrEPICS;
-      double fLastTimeLeft,fLastTimeSBS; 
+      double fLastTimeLeft,fLastTimeSBS;
+
+      double fS_bpmA;      // position of BPM A relative to the pivot 
+      double fDeltaS_bpm;  // distance between BPMA and BPMB  
 
       // calibration coefficients for multiple run ranges 
       // std::vector<calibCoeff_t> fccUnser;

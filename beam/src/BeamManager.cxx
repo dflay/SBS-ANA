@@ -10,6 +10,9 @@ BeamManager::BeamManager(const char *filePath,bool isDebug,const char *ccDirPath
    fLastTimeLeft     = 0; 
    fLastTimeSBS      = 0;
 
+   fDeltaS_bpm       = 4.083; // distance between BPMA and BPMB in meters 
+   fS_bpmA           = 5.969; // distance from BPMA to target pivot         
+
    std::string path = filePath; 
    if(path.compare("NONE")!=0){
       LoadFile(filePath);
@@ -134,7 +137,10 @@ int BeamManager::LoadDataFromTree(const char *filePath,const char *branchName,in
       pt.raster1_rawcur_x = raster1_rawcur_x; 
       pt.raster1_rawcur_y = raster1_rawcur_y; 
       pt.raster2_rawcur_x = raster2_rawcur_x; 
-      pt.raster2_rawcur_y = raster2_rawcur_y; 
+      pt.raster2_rawcur_y = raster2_rawcur_y;
+      // compute beam position at the target [in mm]  
+      pt.target_x = 1000.*( bpmA_x + (bpmB_x-bpmA_x)*(fS_bpmA/fDeltaS_bpm) );
+      pt.target_y = 1000.*( bpmA_y + (bpmB_y-bpmA_y)*(fS_bpmA/fDeltaS_bpm) );
       // if(fCalculateCurrent){
       //    ApplyCalibrationCoeff(pt);
       // }

@@ -34,6 +34,7 @@ int beamPlot(const char *runPath){
    TString filePath;  
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
+      std::cout << "Loading run " << runList[i].runNumber << std::endl;
       filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
                       prefix.Data(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
       mgr->LoadFile(filePath,runList[i].runNumber);
@@ -59,6 +60,14 @@ int beamPlot(const char *runPath){
       graph_df::SetParameters(g[i],20,kBlack);
       h[i] = mgr->GetTH1F("SBSrb",varName[i].Data(),NBin,min[i],max[i]); 
    }
+
+   // 2D raster plot, BPM plot
+   int NBin2D = 4000;  
+   TH2F *r2D_1 = mgr->GetTH2F("SBSrb","Raster.rawcur.x" ,"Raster.rawcur.y" ,NBin2D,0,95E+3,NBin2D,0,95E+3);
+   TH2F *r2D_2 = mgr->GetTH2F("SBSrb","Raster2.rawcur.x","Raster2.rawcur.y",NBin2D,0,95E+3,NBin2D,0,95E+3);
+   TH2F *p2D_A = mgr->GetTH2F("SBSrb","BPMA.x"  ,"BPMA.y"  ,NBin2D,-10E-3,10E-3,NBin2D,-10E-3,10E-3);
+   TH2F *p2D_B = mgr->GetTH2F("SBSrb","BPMB.x"  ,"BPMB.y"  ,NBin2D,-10E-3,10E-3,NBin2D,-10E-3,10E-3);
+   TH2F *tgt   = mgr->GetTH2F("SBSrb","target.x","target.y",NBin2D,-4,4,NBin2D,-4,4);
 
    TCanvas *c1a = new TCanvas("c1a","Beam Check",1200,800);
    c1a->Divide(2,2);
@@ -121,6 +130,31 @@ int beamPlot(const char *runPath){
    c2b->cd(4); 
    h[6]->Draw("");
    c2b->Update();
+
+   TCanvas *c3 = new TCanvas("c3","Raster and BPM Plots",1200,800);
+   c3->Divide(2,2);
+
+   c3->cd(1); 
+   r2D_1->Draw("colz");
+   c3->Update();
+
+   c3->cd(2); 
+   r2D_2->Draw("colz");
+   c3->Update();
+
+   c3->cd(3); 
+   p2D_A->Draw("colz");
+   c3->Update();
+
+   c3->cd(4); 
+   p2D_B->Draw("colz");
+   c3->Update();
+
+   TCanvas *c4 = new TCanvas("c4","Beam Position at Target",1200,800);
+
+   c4->cd(); 
+   tgt->Draw("colz");
+   c4->Update();
 
    return 0;
 }
