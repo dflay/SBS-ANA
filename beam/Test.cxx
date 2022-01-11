@@ -14,14 +14,28 @@
 #include "./include/codaRun.h"
 #include "./src/Graph.cxx"
 #include "./src/bcmUtilities.cxx"
-// #include "./src/BCMManager.cxx"
+#include "./src/JSONManager.cxx"
 
 int Test(){
 
-   scalerData_t data; 
-   data.unserCurrent = 15.; 
+   // scalerData_t data; 
+   // data.unserCurrent = 15.; 
+   // std::cout << data.Print("rate") << std::endl;
 
-   std::cout << data.Print("rate") << std::endl;
+   JSONManager *jmgr = new JSONManager("./input/json/test.json");
+   jmgr->Print(); 
+
+   std::string cutFile = jmgr->GetValueFromKey_str("cut-list"); 
+   std::cout << cutFile << std::endl; 
+
+   std::vector<double> cc; 
+
+   int NCC = jmgr->GetValueFromKey<int>("ncc"); 
+   jmgr->GetVectorFromKey<double>("calib-coeffs",NCC,cc); 
+
+   for(int i=0;i<NCC;i++){
+      std::cout << cc[i] << std::endl;
+   }
 
    // // settings 
    // bool logScale   = false;
