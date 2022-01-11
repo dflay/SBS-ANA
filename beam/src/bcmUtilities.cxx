@@ -287,10 +287,10 @@ namespace bcm_util {
       return 0;  
    }
    //______________________________________________________________________________
-   int LoadRuns(const char *inpath,TString &prefix,std::vector<codaRun_t> &runList){
+   int LoadRuns(const char *inpath,std::vector<codaRun_t> &runList){
       // load run list from a file 
       CSVManager *csv = new CSVManager();
-      int rc = csv->ReadFile(inpath);
+      int rc = csv->ReadFile(inpath,true); // header is included 
       if(rc!=0){
 	 delete csv;
 	 return 1;
@@ -301,12 +301,11 @@ namespace bcm_util {
       csv->GetColumn_byIndex_str(1,STREAM);
       csv->GetColumn_byIndex_str(2,SEG_BEG);
       csv->GetColumn_byIndex_str(3,SEG_END);
-      prefix = data[0];
   
       codaRun_t crun; 
       int aRun=0,aStr=0,aBeg=0,aEnd=0; 
       const int N = data.size();
-      for(int i=1;i<N;i++){
+      for(int i=0;i<N;i++){
 	 aRun = std::atoi( data[i].c_str() );
 	 aStr = std::atoi( STREAM[i].c_str() );
 	 aBeg = std::atoi( SEG_BEG[i].c_str() );

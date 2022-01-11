@@ -2,7 +2,7 @@
 #define UTIL_BCM_H 
 
 // a namespace for helpful functions useful in 
-// BCM data analysis 
+// beam data analysis 
 
 #include <cstdlib>
 #include <iostream>
@@ -11,8 +11,9 @@
 #include "cut.h"
 #include "codaRun.h"
 #include "calibCoeff.h"
-#include "producedVariable.h"
 #include "scalerData.h"
+#include "beamData.h"
+#include "producedVariable.h"
 
 namespace bcm_util {
    int Print(producedVariable_t data); 
@@ -23,7 +24,7 @@ namespace bcm_util {
    int LoadPedestalData(const char *inpath,std::vector<calibCoeff_t> &data); 
    int LoadProducedVariables(const char *inpath,std::vector<producedVariable_t> &data);
    int LoadConfigPaths(const char *inpath,std::vector<std::string> &label,std::vector<std::string> &path); 
-   int LoadRuns(const char *inpath,TString &prefix,std::vector<codaRun_t> &runList); 
+   int LoadRuns(const char *inpath,std::vector<codaRun_t> &runList); 
    int LoadCuts(const char *inpath,std::vector<cut_t> &data);
    int ApplyCuts(double cutLo,double cutHi,std::vector<double> x,std::vector<double> y,std::vector<double> &out); 
    int GetStatsWithCuts(std::vector<double> x,std::vector<double> y,

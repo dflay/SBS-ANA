@@ -14,8 +14,9 @@
 #include "./src/Graph.cxx"
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
+#include "./src/JSONManager.cxx"
 
-int bcmStability(const char *runPath){
+int bcmStability(const char *confPath){
 
    // settings 
    bool logScale   = false;
@@ -24,19 +25,23 @@ int bcmStability(const char *runPath){
 
    int rc=0;
 
-   TString prefix;
+   // read input configuration file 
+   JSONManager *jmgr = new JSONManager(confPath); 
+   std::string prefix  = jmgr->GetValueFromKey_str("ROOTfile-path"); 
+   std::string runPath = jmgr->GetValueFromKey_str("run-path");  
+   std::string cutPath = jmgr->GetValueFromKey_str("cut-path");  
+
    std::vector<codaRun_t> runList;  
-   rc = bcm_util::LoadRuns(runPath,prefix,runList);
+   rc = bcm_util::LoadRuns(runPath.c_str(),runList);
    if(rc!=0) return 1; 
 
-   // BCMManager *mgr = new BCMManager("NONE",false,"./input/calib-coeff_12-01-21.csv");
    BCMManager *mgr = new BCMManager("NONE",false,"./output/calib-coeff");
 
    TString filePath;  
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
       filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
-                      prefix.Data(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
+                      prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
       mgr->LoadFile(filePath,runList[i].runNumber);
    }
 
@@ -46,7 +51,7 @@ int bcmStability(const char *runPath){
 
    // load cuts 
    std::vector<cut_t> cutList; 
-   cut_util::LoadCuts("./input/cut-list_bcm-ped.csv",cutList);
+   cut_util::LoadCuts(cutPath.c_str(),cutList);
    // apply cuts  
    cut_util::ApplyCuts(cutList,rawData,data);
 
