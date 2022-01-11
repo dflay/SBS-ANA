@@ -49,7 +49,7 @@ class BeamManager {
       // int ApplyCalibrationCoeff(beamData_t &data); 
 
    public: 
-      BeamManager(const char *filePath="NONE",bool isDebug=false,const char *ccFilePath="NONE");
+      BeamManager(const char *filePath="NONE",const char *ccFilePath="NONE",bool isDebug=false);
       ~BeamManager(); 
 
       void SetVerbosity(int v)           { fVerbosity        = v; } 

@@ -16,6 +16,7 @@
 #include "TMath.h"
 #include "TCanvas.h"
 #include "TStyle.h"
+#include "TPad.h"
 
 namespace graph_df {
    // ROOT only has the first four, so we add all of them here. 

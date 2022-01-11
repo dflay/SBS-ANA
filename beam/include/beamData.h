@@ -88,6 +88,12 @@ typedef struct beamData {
                 << Form("target y = %.3lf ",target_y) << std::endl;
       return 0; 
    } 
-} beamData_t;   
+} beamData_t;  
+
+// sorting rule 
+bool compareBeamData_byRun(beamData s1,beamData s2){
+   if(s1.runNumber < s2.runNumber) return true;
+   return false;
+} 
 
 #endif 

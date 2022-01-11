@@ -7,7 +7,6 @@
 #include "TFile.h"
 #include "TH1F.h"
 #include "TStyle.h"
-#include "TPad.h"
 #include "TLine.h"
 
 #include "./include/codaRun.h"
@@ -35,11 +34,12 @@ int bcmStability(const char *confPath){
    rc = bcm_util::LoadRuns(runPath.c_str(),runList);
    if(rc!=0) return 1; 
 
-   BCMManager *mgr = new BCMManager("NONE",false,"./output/calib-coeff");
+   BCMManager *mgr = new BCMManager("NONE","./output/calib-coeff",false);
 
    TString filePath;  
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
+      std::cout << Form("Loading run %d",runList[i].runNumber) << std::endl;
       filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
                       prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
       mgr->LoadFile(filePath,runList[i].runNumber);

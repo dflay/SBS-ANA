@@ -1,6 +1,6 @@
 #include "../include/BCMManager.h"
 //______________________________________________________________________________
-BCMManager::BCMManager(const char *filePath,bool isDebug,const char *ccDirPath){
+BCMManager::BCMManager(const char *filePath,const char *ccDirPath,bool isDebug){
    fIsDebug          = isDebug; 
    fCalculateCurrent = false; 
    fVerbosity        = 0;  

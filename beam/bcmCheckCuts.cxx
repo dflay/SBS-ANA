@@ -12,7 +12,6 @@
 
 #include "./include/cut.h"
 #include "./src/Graph.cxx"
-#include "./src/BCMManager.cxx"
 #include "./src/bcmUtilities.cxx"
 
 int bcmCheckCuts(){
@@ -31,7 +30,7 @@ int bcmCheckCuts(){
    
    BCMManager *mgr = new BCMManager();
    // mgr->SetDebug();
-   mgr->EnableEPICS(); 
+   // mgr->EnableEPICS(); 
 
    TString filePath;  
    int startSegment = 0; 

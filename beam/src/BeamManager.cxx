@@ -1,6 +1,6 @@
 #include "../include/BeamManager.h"
 //______________________________________________________________________________
-BeamManager::BeamManager(const char *filePath,bool isDebug,const char *ccDirPath){
+BeamManager::BeamManager(const char *filePath,const char *ccDirPath,bool isDebug){
    fIsDebug          = isDebug; 
    fCalculateCurrent = false; 
    fVerbosity        = 0;  

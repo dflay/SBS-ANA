@@ -50,7 +50,7 @@ class BCMManager {
       int ApplyCalibrationCoeff(scalerData_t &data); 
 
    public: 
-      BCMManager(const char *filePath="NONE",bool isDebug=false,const char *ccFilePath="NONE");
+      BCMManager(const char *filePath="NONE",const char *ccDirPath="NONE",bool isDebug=false);
       ~BCMManager(); 
 
       void SetVerbosity(int v)           { fVerbosity        = v; } 

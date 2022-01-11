@@ -13,40 +13,34 @@
 #include "TLine.h"
 
 #include "./include/cut.h"
-#include "./src/BCMManager.cxx"
+#include "./include/codaRun.h"
 #include "./src/bcmUtilities.cxx"
+#include "./src/JSONManager.cxx"
 
-int bcmProcessCuts(){
+int bcmProcessCuts(const char *confPath){
  
    int rc=0;
 
-   std::vector<std::string> label,confPath; 
-   rc = bcm_util::LoadConfigPaths("./input/bcm-ana.csv",label,confPath); 
-   if(rc!=0) return 1; 
-
-   // sort out which is which 
-   std::string run_path,cut_path,out_path; 
-   const int NP = label.size(); 
-   for(int i=0;i<NP;i++){
-      if(label[i].compare("runlist")==0) run_path = confPath[i]; 
-      if(label[i].compare("cutlist")==0) cut_path = confPath[i]; 
-      if(label[i].compare("outfile")==0) out_path = confPath[i]; 
-   }
-
-   TString prefix; 
-   std::vector<int> runList;
-   rc = bcm_util::LoadRuns(run_path.c_str(),prefix,runList);
+   // read input configuration file 
+   JSONManager *jmgr = new JSONManager(confPath);
+   std::string prefix   = jmgr->GetValueFromKey_str("ROOTfile-path");
+   std::string run_path = jmgr->GetValueFromKey_str("run-path");
+   std::string cut_path = jmgr->GetValueFromKey_str("cut-path");
+   std::string out_path = jmgr->GetValueFromKey_str("out-path");
+   delete jmgr; 
+   
+   std::vector<codaRun_t> runList;
+   rc = bcm_util::LoadRuns(run_path.c_str(),runList);
    if(rc!=0) return 1; 
    
    BCMManager *mgr = new BCMManager();
 
    TString filePath;  
-   int startSegment = 0; 
-   int endSegment   = 0; 
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
-      std::cout << "Loading run " << runList[i] << std::endl;
-      filePath = Form("%s/gmn_replayed-beam_%d_stream0_seg%d_%d.root",prefix.Data(),runList[i],startSegment,endSegment);
+      std::cout << Form("Loading run %d",runList[i].runNumber) << std::endl;
+      filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
+                      prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
       mgr->LoadFile(filePath);
    } 
 
