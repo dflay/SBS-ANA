@@ -38,14 +38,7 @@ for line in lines:
    entries = line.split(',')
    run     = entries[runKey]
    if(cntr!=0):
-      cmd = "ls $DATA_DIR/*_{0}* > test.txt".format(run)
-      # print(cmd)
-      os.system(cmd)
-      # read back what we found 
-      lsFile   = open("test.txt","r") 
-      fileList = lsFile.readlines() 
-      nSeg     = len(fileList) 
-      print("Run {0:5d}: Found {1:3d} segments".format(int(run),int(nSeg) ) ) 
+      nSeg = util_df.getNumSegments("$DATA_DIR",run)
       # build an output file
       RUN.append(run) 
       NSEG.append(nSeg-1)  # nseg starts from 0!  
@@ -58,5 +51,3 @@ for i in xrange(0,NN):
    outFile.write( "{0},{1},{2},{3}\n".format(RUN[i],0,0,NSEG[i]) )
 outFile.close()  
 
-# clean up test output file 
-os.system("rm test.txt") 
