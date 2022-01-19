@@ -25,7 +25,8 @@ int bcmStability(const char *confPath){
    int rc=0;
 
    // read input configuration file 
-   JSONManager *jmgr = new JSONManager(confPath); 
+   JSONManager *jmgr = new JSONManager(confPath);
+   jmgr->Print(); 
    std::string prefix  = jmgr->GetValueFromKey_str("ROOTfile-path"); 
    std::string runPath = jmgr->GetValueFromKey_str("run-path");  
    std::string cutPath = jmgr->GetValueFromKey_str("cut-path");  

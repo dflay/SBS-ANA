@@ -35,6 +35,8 @@ namespace bcm_util {
    int GetStats_byRun(std::string var,std::vector<scalerData_t> data,
                       std::vector<double> &RUN,std::vector<double> &MEAN,std::vector<double> &STDEV); 
 
+   TGraph *GetTGraph(std::string xAxis,std::string yAxis,std::vector<scalerData_t> data); 
+   TGraph *GetTGraph_singleRun(int run,std::string xAxis,std::string yAxis,std::vector<scalerData_t> data); 
    TGraphErrors *GetTGraphErrors_byRun(std::string var,std::vector<scalerData_t> data);
    TGraphErrors *GetTGraphErrors_byRunByUnserCurrent(std::string var,std::vector<scalerData_t> data); 
 }

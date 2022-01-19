@@ -43,6 +43,8 @@ class BCMManager {
       std::vector<scalerData_t> fLeft,fSBS;
       std::vector<epicsData_t> fEPICS;
 
+      std::vector<int> fRunList; // list of runs read into the manager  
+
       bool IsBad(double v);  
       int CheckFile(const char *filePath); 
       int LoadCalibrationCoefficients(const char *type,const char *filePath);
@@ -66,7 +68,14 @@ class BCMManager {
 
       int GetVector(const char *arm,const char *var,std::vector<double> &v); 
       int GetVector_scaler(const char *arm,std::vector<scalerData_t> &data); 
-      int GetVector_epics(std::vector<epicsData_t> &data); 
+      int GetVector_scaler(const char *arm,int run,std::vector<scalerData_t> &data); 
+      int GetVector_epics(std::vector<epicsData_t> &data);
+
+      int GetRunList(std::vector<int> &r){
+	 const int NR = fRunList.size();
+	 for(int i=0;i<NR;i++) r.push_back(fRunList[i]);
+	 return 0; 
+      } 
 
       TH1F * GetTH1F(const char *arm,const char *var_name,int NBin,double min,double max);
 

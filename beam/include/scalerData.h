@@ -30,21 +30,23 @@ typedef struct scalerData {
    double d10Rate;        // downstream BCM x10 (analog) rate            
    double d10Counts;      // downstream BCM x10 (analog) counts       
    double d10Current;     // downstream BCM x10 (analog) current        
-   int runNumber;
-   int event;
-   // constructor 
+   int runNumber;         // CODA run number
+   int runEvent;          // event number in a given CODA run              
+   int event;             // "global" event number -- that is, an entry number based on how many runs are chained together        
+   // constructor  
    scalerData():
       arm("NONE"),info("NONE"),time(0),time_num(0),time_den(0),
       unserRate(0),unserCounts(0),unserCurrent(0),
       u1Rate(0),u1Counts(0),u1Current(0),unewRate(0),unewCounts(0),unewCurrent(0),
       dnewRate(0),dnewCounts(0),dnewCurrent(0),d1Rate(0),d1Counts(0),d1Current(0),
       d3Rate(0),d3Counts(0),d3Current(0),d10Rate(0),d10Counts(0),d10Current(0),
-      runNumber(0),event(0)
+      runNumber(0),runEvent(0),event(0)
    {} 
    // get value of the member variable based on name 
    double getValue(std::string varName){
       double val = 0;
       if(varName.compare("run")==0)            val = runNumber;
+      if(varName.compare("runEvent")==0)       val = runEvent;
       if(varName.compare("event")==0)          val = event;
       if(varName.compare("time")==0)           val = time;
       if(varName.compare("unser.rate")==0)     val = unserRate;
@@ -75,6 +77,7 @@ typedef struct scalerData {
       if(type.compare("rate")==0){
 	 std::cout << Form("event %05d, "       ,event)
 	           << Form("run %05d, "         ,runNumber)
+	           << Form("run event %05d, "   ,runEvent)
 	           << Form("time = %.3lf, "     ,time)
 	           << Form("time_num = %.3lf, " ,time_num)
 	           << Form("time_den = %.3lf, " ,time_den)
@@ -88,6 +91,7 @@ typedef struct scalerData {
       }else if(type.compare("cnt")==0 || type.compare("count")==0){
 	 std::cout << Form("event %05d, "      ,event)
 	           << Form("run %05d, "        ,runNumber)
+	           << Form("run event %05d, "  ,runEvent)
 	           << Form("time = %.3lf, "    ,time)
 	           << Form("time_num = %.3lf, ",time_num)
 	           << Form("time_den = %.3lf, ",time_den)
@@ -101,6 +105,7 @@ typedef struct scalerData {
       }else if(type.compare("current")==0){
 	 std::cout << Form("event %05d, "          ,event)
 	           << Form("run %05d, "            ,runNumber)
+	           << Form("run event %05d, "      ,runEvent)
 	           << Form("time = %.3lf, "        ,time)
 	           << Form("time_num = %.3lf, "    ,time_num)
 	           << Form("time_den = %.3lf, "    ,time_den)

@@ -29,7 +29,8 @@ BCMManager::~BCMManager(){
 void BCMManager::Clear(){
    fLeft.clear();
    fSBS.clear();
-   fEPICS.clear(); 
+   fEPICS.clear();
+   fRunList.clear(); 
    fEvtCntrLeft  = 0;
    fEvtCntrSBS   = 0;
    fEvtCntrEPICS = 0;
@@ -39,15 +40,23 @@ void BCMManager::Clear(){
 //______________________________________________________________________________
 int BCMManager::LoadFile(const char *filePath,int runNumber){
    // Attach trees for LHRS and SBS
+   int fail=0;
    int rc = CheckFile(filePath); 
    if(rc!=0){
       std::cout << "[BCMManager::LoadFile]: Cannot open the file for run " << runNumber << std::endl;
       return rc;
    }
    // file is valid, read in the data from the trees 
-   rc = LoadDataFromTree(filePath,"TSLeft",runNumber); 
-   rc = LoadDataFromTree(filePath,"TSsbs" ,runNumber);
-   rc = LoadEPICSDataFromTree(filePath,runNumber); 
+   int rc_lhrs  = LoadDataFromTree(filePath,"TSLeft",runNumber);
+   int rc_sbs   = LoadDataFromTree(filePath,"TSsbs" ,runNumber);
+   int rc_epics = LoadEPICSDataFromTree(filePath,runNumber); 
+
+   // add the run to the run list
+   // must at least have the SBS branch to be considered good 
+   if(rc_sbs==0){
+      std::cout << "[BCMManager::LoadFile]: Loaded run " << runNumber << std::endl;
+      fRunList.push_back(runNumber); 
+   }
 
    return rc; 
 }
@@ -148,13 +157,15 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
 	 ApplyCalibrationCoeff(pt);
       }
       if(arm.compare("Left")==0){
-	 pt.time  = fLastTimeLeft + time; 
-	 pt.event = fEvtCntrLeft; 
+	 pt.time     = fLastTimeLeft + time; 
+	 pt.event    = fEvtCntrLeft;
+	 pt.runEvent = i; 
 	 fLeft.push_back(pt); 
 	 fEvtCntrLeft++;
       }else if(arm.compare("sbs")==0){
-	 pt.time  = fLastTimeSBS + time; 
-	 pt.event = fEvtCntrSBS; 
+	 pt.time     = fLastTimeSBS + time; 
+	 pt.event    = fEvtCntrSBS; 
+	 pt.runEvent = i; 
 	 fSBS.push_back(pt); 
 	 fEvtCntrSBS++;
       }
@@ -426,6 +437,28 @@ TGraph * BCMManager::GetTGraph(const char *arm,const char *xAxis,const char *yAx
    const int N = x.size(); 
    TGraph *g = new TGraph(N,&x[0],&y[0]); 
    return g; 
+}
+//______________________________________________________________________________
+int BCMManager::GetVector_scaler(const char *arm,int run,std::vector<scalerData_t> &data){
+   // return a vector of the scalerData for a given run for a given run for a given run for a given run 
+   std::string armName = arm; 
+ 
+   int NN=0;
+   if(armName.compare("Left")==0) NN = fLeft.size(); 
+   if(armName.compare("sbs")==0)  NN = fSBS.size(); 
+
+   for(int i=0;i<NN;i++){
+      if(armName.compare("Left")==0){
+	 if(run==fLeft[i].runNumber){
+	    data.push_back(fLeft[i]);
+         } 
+      }else if(armName.compare("sbs")==0){
+	 if(run==fSBS[i].runNumber){
+	    data.push_back(fSBS[i]);
+         } 
+      }
+   } 
+   return 0;
 }
 //______________________________________________________________________________
 int BCMManager::GetVector_scaler(const char *arm,std::vector<scalerData_t> &data){

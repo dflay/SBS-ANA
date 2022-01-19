@@ -4,6 +4,38 @@
 #include "BCMManager.cxx"
 namespace bcm_util {
    //______________________________________________________________________________
+   TGraph *GetTGraph(std::string xAxis,std::string yAxis,std::vector<scalerData_t> data){
+      // get a plot with data from a vector of scalerData 
+      double ix=0,iy=0;
+      std::vector<double> x,y; 
+      const int N = data.size();
+      for(int i=0;i<N;i++){
+	 ix = data[i].getValue(xAxis);
+	 iy = data[i].getValue(yAxis);
+	 x.push_back(ix); 
+	 y.push_back(iy); 
+      }
+      TGraph *g = graph_df::GetTGraph(x,y); 
+      return g;       
+   }
+   //______________________________________________________________________________
+   TGraph *GetTGraph_singleRun(int run,std::string xAxis,std::string yAxis,std::vector<scalerData_t> data){
+      // get a plot with data from a single run  
+      double ix=0,iy=0;
+      std::vector<double> x,y; 
+      const int N = data.size();
+      for(int i=0;i<N;i++){
+	 if(run==data[i].runNumber){
+	    ix = data[i].getValue(xAxis);
+	    iy = data[i].getValue(yAxis);
+	    x.push_back(ix); 
+	    y.push_back(iy); 
+         }
+      }
+      TGraph *g = graph_df::GetTGraph(x,y); 
+      return g;       
+   }
+   //______________________________________________________________________________
    TGraphErrors *GetTGraphErrors_byRunByUnserCurrent(std::string var,std::vector<scalerData_t> data){
       // get a plot of BCM scaler rate vs Unser current (on a run-by-run basis) 
       // note: this is a sub-optimal way to do a BCM calibration; there is no toggling of on/off 
