@@ -12,6 +12,7 @@
 
 #include "./include/scalerData.h"
 #include "./include/codaRun.h"
+#include "./src/Utilities.cxx"
 #include "./src/Graph.cxx"
 #include "./src/bcmUtilities.cxx"
 #include "./src/JSONManager.cxx"
@@ -35,6 +36,19 @@ int Test(){
 
    for(int i=0;i<NCC;i++){
       std::cout << cc[i] << std::endl;
+   }
+
+   std::string rfPath = jmgr->GetValueFromKey_str("ROOTfile-path");
+   int run=11913;
+   std::vector<int> data; 
+   int rc = util_df::GetROOTFileMetaData(rfPath.c_str(),run,data); 
+
+   int stream=-1,begSeg=-1,endSeg=-1; 
+   if(rc==0){
+      stream = data[0]; 
+      begSeg = data[1]; 
+      endSeg = data[2];
+      std::cout << Form("Run %d, begSeg = %d, endSeg = %d",run,begSeg,endSeg) << std::endl;
    }
 
    // // settings 
