@@ -327,25 +327,29 @@ namespace bcm_util {
 	 delete csv;
 	 return 1;
       }
-     
-      std::vector<std::string> data,STREAM,SEG_BEG,SEG_END;
+ 
+      std::vector<std::string> data,STREAM,SEG_BEG,SEG_END,INFO;
       csv->GetColumn_byIndex_str(0,data);
       csv->GetColumn_byIndex_str(1,STREAM);
       csv->GetColumn_byIndex_str(2,SEG_BEG);
       csv->GetColumn_byIndex_str(3,SEG_END);
+      csv->GetColumn_byIndex_str(4,INFO); 
   
       codaRun_t crun; 
-      int aRun=0,aStr=0,aBeg=0,aEnd=0; 
+      int aRun=0,aStr=0,aBeg=0,aEnd=0;
+      std::string info;  
       const int N = data.size();
       for(int i=0;i<N;i++){
 	 aRun = std::atoi( data[i].c_str() );
 	 aStr = std::atoi( STREAM[i].c_str() );
 	 aBeg = std::atoi( SEG_BEG[i].c_str() );
 	 aEnd = std::atoi( SEG_END[i].c_str() );
+         info = INFO[i]; 
 	 crun.runNumber    = aRun;
 	 crun.stream       = aStr; 
 	 crun.segmentBegin = aBeg; 
-	 crun.segmentEnd   = aEnd; 
+	 crun.segmentEnd   = aEnd;
+	 crun.info         = info; 
 	 runList.push_back(crun);
       }
 

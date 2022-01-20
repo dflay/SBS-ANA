@@ -52,6 +52,7 @@ int bcmCalibrate_new(const char *confPath){
    std::vector<scalerData_t> rawData,data;
    mgr->GetVector_scaler("sbs",rawData);  
 
+
    // load cuts (loose cut on the Unser)  
    std::vector<cut_t> cutList; 
    cut_util::LoadCuts(cutPath.c_str(),cutList);
@@ -67,6 +68,19 @@ int bcmCalibrate_new(const char *confPath){
    if(NNR==0){
       std::cout << "ERROR! Run list size = " << NNR << std::endl;
       return 1;
+   }
+
+   // we load the requested beam current into the codaRun::info data field as a check
+   // so we will populate this vector 
+   double argC=0; 
+   std::vector<double> reqCurrent; 
+   for(int i=0;i<NNR;i++){
+      for(int j=0;j<NR;j++){
+	 if(run[i]==runList[j].runNumber){
+	    argC = std::atof(runList[j].info.c_str());
+	    reqCurrent.push_back(argC); 
+         }
+      }
    } 
 
    // apply all beam trip cuts to all data
@@ -87,6 +101,7 @@ int bcmCalibrate_new(const char *confPath){
 
    std::vector<double> rr,mean_uns,stdev_uns;
    std::vector<double> mean_unsi,stdev_unsi;
+   std::vector<double> diff,diffErr; // difference between unser current and requested current 
 
    std::vector<double> RR,UR,URE,UI,UIE; 
    std::vector<double> U1,U1E,UN,UNE;
@@ -101,6 +116,7 @@ int bcmCalibrate_new(const char *confPath){
    std::vector<double> mean_dnew,stdev_dnew;
 
    int NEV=0,N_CUTS=0; 
+   double argDiff=0,argDiffErr=0;
    for(int i=0;i<NNR;i++){
       // grab a run and apply a list of cuts 
       mgr->GetVector_scaler("sbs",run[i],RAW_DATA);
@@ -131,9 +147,15 @@ int bcmCalibrate_new(const char *confPath){
       bcm_util::GetStats_byRun("d10.rate",DATA,rr,mean_d10 ,stdev_d10 );
       rr.clear();
       bcm_util::GetStats_byRun("dnew.rate",DATA,rr,mean_dnew,stdev_dnew);
-      std::cout << Form("run %d: unser current = %.3lf ± %.3lf, unser rate = %.3lf ± %.3lf",
-                        (int)rr[0],mean_unsi[0],stdev_unsi[0],mean_uns[0],stdev_uns[0]) << std::endl;
+      // FIXME: arbitrary fix for beam off runs 
+      // if(reqCurrent[i]==0) mean_unsi[0] = 0; 
+      std::cout << Form("run %d: req current = %.3lf, unser current = %.3lf ± %.3lf, unser rate = %.3lf ± %.3lf",
+                        (int)rr[0],reqCurrent[i],mean_unsi[0],stdev_unsi[0],mean_uns[0],stdev_uns[0]) << std::endl;
       // save for diagnostic plot 
+      argDiff    = (reqCurrent[i] - mean_unsi[0]);
+      argDiffErr = stdev_unsi[0];  
+      diff.push_back(argDiff);
+      diffErr.push_back(argDiffErr);  
       RR.push_back(rr[0]);
       UR.push_back(mean_uns[0]); 
       URE.push_back(stdev_uns[0]);  
@@ -194,24 +216,46 @@ int bcmCalibrate_new(const char *confPath){
       runCuts.clear(); 
    }
 
+   TGraph *gReqCurrentRun         = graph_df::GetTGraph(RR,reqCurrent);
    TGraphErrors *gUnserCurrentRun = graph_df::GetTGraphErrors(RR,UI,UIE);
    TGraphErrors *gUnserRateRun    = graph_df::GetTGraphErrors(RR,UR,URE);
-   graph_df::SetParameters(gUnserCurrentRun,20,kBlack); 
-   graph_df::SetParameters(gUnserRateRun   ,20,kBlack);
+   TGraphErrors *gUnserDiffRun    = graph_df::GetTGraphErrors(RR,diff,diffErr); 
+   graph_df::SetParameters(gReqCurrentRun  ,21,kBlack); 
+   graph_df::SetParameters(gUnserCurrentRun,20,kRed); 
+   graph_df::SetParameters(gUnserRateRun   ,20,kRed);
+   graph_df::SetParameters(gUnserDiffRun   ,20,kBlue);
+
+   // make a line at 0 uA 
+   int runDelta = 50; 
+   int runMin = run[0] - runDelta; 
+   int runMax = run[NNR-1] + runDelta; 
+   TLine *zero = new TLine(runMin,0,runMax,0); 
+   zero->SetLineColor(kBlack); 
+
+   TMultiGraph *mgu = new TMultiGraph();
+   mgu->Add(gReqCurrentRun,"p");
+   mgu->Add(gUnserCurrentRun  ,"p");
+
+   TLegend *L = new TLegend(0.6,0.6,0.8,0.8);
+   L->AddEntry(gReqCurrentRun  ,"Requested Current","p"); 
+   L->AddEntry(gUnserCurrentRun,"Unser Current"    ,"p"); 
 
    TCanvas *c4 = new TCanvas("c4","Unser Data",1200,800); 
    c4->Divide(1,2);
 
    c4->cd(1); 
-   gUnserCurrentRun->Draw("ap"); 
-   graph_df::SetLabels(gUnserCurrentRun,"Unser Current","Run Number","Unser Current [#muA]");  
-   gUnserCurrentRun->Draw("ap"); 
+   mgu->Draw("a"); 
+   graph_df::SetLabels(mgu,"Unser Current","Run Number","Unser Current [#muA]");  
+   mgu->Draw("a");
+   L->Draw("same"); 
    c4->Update();
 
    c4->cd(2); 
-   gUnserRateRun->Draw("ap"); 
-   graph_df::SetLabels(gUnserRateRun,"Unser Rate","Run Number","Unser Rate [Hz]");  
-   gUnserRateRun->Draw("ap"); 
+   gUnserDiffRun->Draw("ap"); 
+   graph_df::SetLabels(gUnserDiffRun,"Difference (req - I_{Uns})","Run Number","Diff (req - I_{Uns}) [#muA]");  
+   gUnserDiffRun->GetYaxis()->SetRangeUser(-5,5);  
+   gUnserDiffRun->Draw("ap");
+   zero->Draw("same"); 
    c4->Update();
 
    // build the scaler rate vs Unser current plots
@@ -230,13 +274,6 @@ int bcmCalibrate_new(const char *confPath){
    //    g[i] = bcm_util::GetTGraphErrors_byRunByUnserCurrent(var[i].Data(),DATA_FLTR);
       graph_df::SetParameters(g[i],20,kBlack);
    }
-
-   // make a line at 0 uA 
-   int runDelta = 50; 
-   int runMin = run[0] - runDelta; 
-   int runMax = run[NNR-1] + runDelta; 
-   TLine *zero = new TLine(runMin,0,runMax,0); 
-   zero->SetLineColor(kBlack); 
 
    // plot the scaler rates vs Unser current 
    TString Title,yAxisTitle;
@@ -258,6 +295,7 @@ int bcmCalibrate_new(const char *confPath){
 
    for(int i=0;i<N/2;i++){
       c1a->cd(i+1);
+      gStyle->SetOptFit(111); 
       Title      = Form("%s"     ,var[i].Data());
       yAxisTitle = Form("%s [Hz]",var[i].Data());
       g[i]->Draw("ap");
@@ -275,6 +313,7 @@ int bcmCalibrate_new(const char *confPath){
       c1a->Update();
       // next canvas 
       c1b->cd(i+1);
+      gStyle->SetOptFit(111); 
       Title      = Form("%s"     ,var[i+3].Data());
       yAxisTitle = Form("%s [Hz]",var[i+3].Data());
       g[i+3]->Draw("ap");
@@ -296,6 +335,7 @@ int bcmCalibrate_new(const char *confPath){
    Title      = Form("%s"     ,var[6].Data());
    yAxisTitle = Form("%s [Hz]",var[6].Data());
    c1b->cd(4);
+   gStyle->SetOptFit(111); 
    g[6]->Draw("ap");
    graph_df::SetLabels(g[6],Title,xAxisTitle,yAxisTitle);
    g[6]->Draw("ap");

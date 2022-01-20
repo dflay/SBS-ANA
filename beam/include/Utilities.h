@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <dirent.h>
 #include <sys/types.h>
 
