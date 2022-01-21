@@ -264,10 +264,20 @@ int bcmCalibrate_new(const char *confPath){
    double par[N][2],parErr[N][2]; 
 
    const int npar=2;
-   double min=-1,max=20; 
+   // double min=-1,max=20; 
+   // fit range     unser, u1, unew, d1, d3, d10, dnew
+   double min[N] = {-1, 3,-1, 3, 3, 1,-1};
+   double max[N] = {16,16,16,16,16,16,16};
+   TString fitName[N]; 
    double argPar=0,argParErr=0;
-   TF1 *myFit = new TF1("myFit",fitFunc,min,max,npar);
-   myFit->SetLineColor(kRed);
+   TF1 **myFit = new TF1*[N]; 
+   for(int i=0;i<N;i++){
+      fitName[i] = Form("myFit_%d",i);
+      myFit[i] = new TF1(fitName[i],fitFunc,min[i],max[i],npar);
+      myFit[i]->SetParameter(0,0); 
+      myFit[i]->SetParameter(1,0); 
+      myFit[i]->SetLineColor(kRed);
+   }
 
    for(int i=0;i<N/2;i++){
       c1a->cd(i+1);
@@ -277,15 +287,13 @@ int bcmCalibrate_new(const char *confPath){
       g[i]->Draw("ap");
       graph_df::SetLabels(g[i],Title,xAxisTitle,yAxisTitle);
       g[i]->Draw("ap");
-      g[i]->Fit("myFit","QR"); 
+      g[i]->Fit(fitName[i],"QR"); 
       for(int j=0;j<npar;j++){
-	 argPar    = myFit->GetParameter(j);
-	 argParErr = myFit->GetParError(j);
+	 argPar    = myFit[i]->GetParameter(j);
+	 argParErr = myFit[i]->GetParError(j);
          par[i][j] = argPar; 
          parErr[i][j] = argParErr; 
       }
-      std::cout << Form("%s: p[0] = %.2lf ± %.2lf, p[1] = %.2lf ± %.2lf",
-                        var[i].Data(),par[i][0],parErr[i][0],par[i][1],parErr[i][1]) << std::endl;
       c1a->Update();
       // next canvas 
       c1b->cd(i+1);
@@ -295,15 +303,13 @@ int bcmCalibrate_new(const char *confPath){
       g[i+3]->Draw("ap");
       graph_df::SetLabels(g[i+3],Title,xAxisTitle,yAxisTitle);
       g[i+3]->Draw("ap");
-      g[i+3]->Fit("myFit","QR"); 
+      g[i+3]->Fit(fitName[i+3],"QR"); 
       for(int j=0;j<npar;j++){
-	 argPar    = myFit->GetParameter(j);
-	 argParErr = myFit->GetParError(j);
+	 argPar    = myFit[i+3]->GetParameter(j);
+	 argParErr = myFit[i+3]->GetParError(j);
          par[i+3][j] = argPar; 
          parErr[i+3][j] = argParErr; 
       }
-      std::cout << Form("%s: p[0] = %.2lf ± %.2lf, p[1] = %.2lf ± %.2lf",
-                        var[i+3].Data(),par[i+3][0],parErr[i+3][0],par[i+3][1],parErr[i+3][1]) << std::endl;
       c1b->Update();
    }
 
@@ -315,15 +321,21 @@ int bcmCalibrate_new(const char *confPath){
    g[6]->Draw("ap");
    graph_df::SetLabels(g[6],Title,xAxisTitle,yAxisTitle);
    g[6]->Draw("ap");
-   g[6]->Fit("myFit","QR"); 
+   g[6]->Fit(fitName[6],"QR"); 
    for(int j=0;j<npar;j++){
-      argPar    = myFit->GetParameter(j);
-      argParErr = myFit->GetParError(j);
+      argPar    = myFit[6]->GetParameter(j);
+      argParErr = myFit[6]->GetParError(j);
       par[6][j] = argPar; 
       parErr[6][j] = argParErr; 
    }
-   std::cout << Form("%s: p[0] = %.2lf ± %.2lf, p[1] = %.2lf ± %.2lf",var[6].Data(),par[6][0],parErr[6][0],par[6][1],parErr[6][1]) << std::endl;
+   // std::cout << Form("%s: p[0] = %.2lf ± %.2lf, p[1] = %.2lf ± %.2lf",var[6].Data(),par[6][0],parErr[6][0],par[6][1],parErr[6][1]) << std::endl;
    c1b->Update();
+   
+   // results 
+   for(int i=0;i<N;i++){
+      std::cout << Form("%s: p[0] = %.2lf ± %.2lf, p[1] = %.2lf ± %.2lf",
+                        var[i].Data(),par[i][0],parErr[i][0],par[i][1],parErr[i][1]) << std::endl;
+   }
  
    return 0;
 }
