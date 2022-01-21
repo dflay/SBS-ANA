@@ -27,7 +27,6 @@ int bcmCheckRun(const char *confPath){
 
    // read input configuration file 
    JSONManager *jmgr = new JSONManager(confPath);
-   jmgr->Print(); 
    std::string prefix       = jmgr->GetValueFromKey_str("ROOTfile-path"); 
    std::string runPath      = jmgr->GetValueFromKey_str("run-path");  
    std::string cutPath      = jmgr->GetValueFromKey_str("cut-path"); 
@@ -140,9 +139,9 @@ int bcmCheckRun(const char *confPath){
    }
 
    // get BCM plots vs event number 
-   TMultiGraph **mg = new TMultiGraph*[NNR]; 
-   TGraph **gb  = new TGraph*[NNR]; 
-   TGraph **ga  = new TGraph*[NNR]; 
+   TMultiGraph **mg = new TMultiGraph*[N]; 
+   TGraph **gb  = new TGraph*[N]; 
+   TGraph **ga  = new TGraph*[N]; 
    for(int i=0;i<N;i++){
       mg[i] = new TMultiGraph();
       gb[i] = bcm_util::GetTGraph("runEvent",var[i].Data(),data); 

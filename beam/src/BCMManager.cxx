@@ -332,18 +332,25 @@ int BCMManager::ApplyCalibrationCoeff(scalerData_t &data){
          // if rc = 0, we found the calibration coefficients; apply them
 	 if(dev[i].compare("unser")==0){
 	    data.unserCurrent = (data.unserRate - PED - OFFSET)/GAIN;
+            data.unserRate_ps = data.unserRate - PED; 
 	 }else if(dev[i].compare("u1")==0){
 	    data.u1Current = (data.u1Rate - PED - OFFSET)/GAIN;
+            data.u1Rate_ps = data.u1Rate - PED; 
 	 }else if(dev[i].compare("unew")==0){
 	    data.unewCurrent = (data.unewRate - PED - OFFSET)/GAIN;
+            data.unewRate_ps = data.unewRate - PED; 
 	 }else if(dev[i].compare("d1")==0){
 	    data.d1Current = (data.d1Rate - PED - OFFSET)/GAIN;
+            data.d1Rate_ps = data.d1Rate - PED; 
 	 }else if(dev[i].compare("d3")==0){
 	    data.d3Current = (data.d3Rate - PED - OFFSET)/GAIN;
+            data.d3Rate_ps = data.d3Rate - PED; 
 	 }else if(dev[i].compare("d10")==0){
 	    data.d10Current = (data.d10Rate - PED - OFFSET)/GAIN;
+            data.d10Rate_ps = data.d10Rate - PED; 
 	 }else if(dev[i].compare("dnew")==0){
 	    data.dnewCurrent = (data.dnewRate - PED - OFFSET)/GAIN;
+            data.dnewRate_ps = data.dnewRate - PED; 
 	 }
       }
    } 
