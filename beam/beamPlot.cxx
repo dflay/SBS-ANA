@@ -12,9 +12,10 @@
 
 #include "./include/codaRun.h"
 #include "./src/Graph.cxx"
+#include "./src/JSONManager.cxx"
+#include "./src/Utilities.cxx"
 #include "./src/bcmUtilities.cxx"
 #include "./src/BeamManager.cxx"
-#include "./src/JSONManager.cxx"
 
 int beamPlot(const char *confPath){
 
@@ -29,6 +30,7 @@ int beamPlot(const char *confPath){
    JSONManager *jmgr = new JSONManager(confPath);
    std::string prefix  = jmgr->GetValueFromKey_str("ROOTfile-path");
    std::string runPath = jmgr->GetValueFromKey_str("run-path");
+   delete jmgr; 
 
    std::vector<codaRun_t> runList;  
    rc = bcm_util::LoadRuns(runPath.c_str(),runList);
@@ -36,13 +38,19 @@ int beamPlot(const char *confPath){
 
    BeamManager *mgr = new BeamManager();
 
+   std::vector<int> md; 
+
    TString filePath;  
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
-      std::cout << Form("Loading run %d",runList[i].runNumber) << std::endl;
+      util_df::GetROOTFileMetaData(prefix.c_str(),runList[i].runNumber,md);
+      runList[i].stream       = md[0];
+      runList[i].segmentBegin = md[1];
+      runList[i].segmentEnd   = md[2];
       filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
                       prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
       mgr->LoadFile(filePath,runList[i].runNumber);
+      md.clear();
    }
 
    const int N = 8; 

@@ -22,8 +22,10 @@ int bcmCalibrate_new(const char *confPath){
    // settings 
    bool logScale   = false;
 
-   const int N = 7; 
-   TString var[N] = {"unser.rate.ps","u1.rate.ps","unew.rate.ps","d1.rate.ps","d3.rate.ps","d10.rate.ps","dnew.rate.ps"};
+   const int N = 7;
+   TString varRoot[N] = {"unser","u1","unew","d1","d3","d10","dnew"};
+   TString var[N]; 
+   for(int i=0;i<N;i++) var[i] = Form("%s.rate.ps",varRoot[i].Data());  
 
    gStyle->SetOptStat(0);
 
@@ -328,13 +330,30 @@ int bcmCalibrate_new(const char *confPath){
       par[6][j] = argPar; 
       parErr[6][j] = argParErr; 
    }
-   // std::cout << Form("%s: p[0] = %.2lf ± %.2lf, p[1] = %.2lf ± %.2lf",var[6].Data(),par[6][0],parErr[6][0],par[6][1],parErr[6][1]) << std::endl;
    c1b->Update();
-   
-   // results 
+  
+   // gather results into calibCoeff struct and print to file  
+   calibCoeff_t apt; 
+   std::vector<calibCoeff_t> cc; 
+
+   // write to individual files
+   char outpath[200]; 
    for(int i=0;i<N;i++){
-      std::cout << Form("%s: p[0] = %.2lf ± %.2lf, p[1] = %.2lf ± %.2lf",
-                        var[i].Data(),par[i][0],parErr[i][0],par[i][1],parErr[i][1]) << std::endl;
+      apt.dev       = varRoot[i].Data(); 
+      apt.offset    = par[i][0]; 
+      apt.offsetErr = parErr[i][0];  
+      apt.slope     = par[i][1]; 
+      apt.slopeErr  = parErr[i][1]; 
+      apt.runMin    = 0; 
+      apt.runMax    = 99999;
+      std::cout << Form("%s: offset = %.2lf ± %.2lf Hz, slope = %.2lf ± %.2lf",
+                        apt.dev.c_str(),apt.offset,apt.offsetErr,apt.slope,apt.slopeErr) << std::endl; 
+      // file name 
+      sprintf(outpath,"./output/test/%s-calib-results.csv",apt.dev.c_str());
+      cc.push_back(apt);
+      bcm_util::WriteToFile_cc(outpath,cc);
+      // set up for next device 
+      cc.clear(); 
    }
  
    return 0;

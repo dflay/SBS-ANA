@@ -33,6 +33,8 @@ class BeamManager {
       double fS_bpmA;      // position of BPM A relative to the pivot 
       double fDeltaS_bpm;  // distance between BPMA and BPMB  
 
+      std::vector<int> fRunList; 
+
       // calibration coefficients for multiple run ranges 
       // std::vector<calibCoeff_t> fccUnser;
       // std::vector<calibCoeff_t> fccU1,fccUnew;
@@ -64,7 +66,13 @@ class BeamManager {
 
       int GetVector(const char *arm,const char *var,std::vector<double> &v); 
       int GetVector_beam(const char *arm,std::vector<beamData_t> &data); 
-      int GetVector_epics(std::vector<epicsData_t> &data); 
+      int GetVector_epics(std::vector<epicsData_t> &data);
+
+      int GetRunList(std::vector<int> &r){
+         const int NR = fRunList.size();
+         for(int i=0;i<NR;i++) r.push_back(fRunList[i]);
+         return 0;
+      } 
 
       TH1F * GetTH1F(const char *arm,const char *var_name,int NBin,double min,double max);
 

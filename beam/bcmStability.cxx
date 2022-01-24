@@ -10,15 +10,12 @@
 #include "TLine.h"
 
 #include "./include/codaRun.h"
+#include "./src/JSONManager.cxx"
 #include "./src/Graph.cxx"
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
-#include "./src/JSONManager.cxx"
 
 int bcmStability(const char *confPath){
-
-   // settings 
-   bool logScale   = false;
 
    gStyle->SetOptStat(0);
 
@@ -26,21 +23,21 @@ int bcmStability(const char *confPath){
 
    // read input configuration file 
    JSONManager *jmgr = new JSONManager(confPath);
-   jmgr->Print(); 
    std::string prefix  = jmgr->GetValueFromKey_str("ROOTfile-path"); 
    std::string runPath = jmgr->GetValueFromKey_str("run-path");  
-   std::string cutPath = jmgr->GetValueFromKey_str("cut-path");  
+   std::string cutPath = jmgr->GetValueFromKey_str("cut-path"); 
+   std::string ccPath  = jmgr->GetValueFromKey_str("bcm-cc-path"); 
+   std::string varType = jmgr->GetValueFromKey_str("var-type"); // rate, cnt, or current?  
 
    std::vector<codaRun_t> runList;  
    rc = bcm_util::LoadRuns(runPath.c_str(),runList);
    if(rc!=0) return 1; 
 
-   BCMManager *mgr = new BCMManager("NONE","./output/calib-coeff",false);
+   BCMManager *mgr = new BCMManager("NONE",ccPath.c_str(),false);
 
    TString filePath;  
    const int NR = runList.size();  
    for(int i=0;i<NR;i++){ 
-      std::cout << Form("Loading run %d",runList[i].runNumber) << std::endl;
       filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
                       prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
       mgr->LoadFile(filePath,runList[i].runNumber);
@@ -59,8 +56,10 @@ int bcmStability(const char *confPath){
    // sort the data by run number 
    std::sort(data.begin(),data.end(),compareScalerData_byRun); 
 
-   const int N = 7; 
-   TString var[N] = {"unser.rate","u1.rate","unew.rate","d1.rate","d3.rate","d10.rate","dnew.rate"};
+   const int N = 7;
+   TString var[N]; 
+   TString varRoot[N] = {"unser","u1","unew","d1","d3","d10","dnew"}; 
+   for(int i=0;i<N;i++) var[i] = Form("%s.%s",varRoot[i].Data(),varType.c_str());  
 
    TGraphErrors **g  = new TGraphErrors*[N]; 
 
@@ -148,8 +147,14 @@ int bcmStability(const char *confPath){
    TLine *zero = new TLine(runMin,0,runMax,0); 
    zero->SetLineColor(kBlack); 
 
-   TString Title,yAxisTitle;
+   TString Title,yAxisTitle,units;
    TString xAxisTitle = Form("Run Number");
+
+   if(varType.compare("rate")==0){
+      units = Form("Hz");
+   }else if(varType.compare("current")==0){
+      units = Form("#muA");
+   }
 
    TCanvas *c1a = new TCanvas("c1a","BCM Check by Run",1200,800);
    c1a->Divide(2,2);
@@ -160,7 +165,7 @@ int bcmStability(const char *confPath){
    for(int i=0;i<N/2;i++){
       c1a->cd(i+1);
       Title      = Form("%s"     ,var[i].Data());
-      yAxisTitle = Form("%s [Hz]",var[i].Data());
+      yAxisTitle = Form("%s [%s]",var[i].Data(),units.Data());
       g[i]->Draw("alp");
       graph_df::SetLabels(g[i],Title,xAxisTitle,yAxisTitle);
       g[i]->Draw("alp");
@@ -168,7 +173,7 @@ int bcmStability(const char *confPath){
       // next canvas 
       c1b->cd(i+1);
       Title      = Form("%s"     ,var[i+3].Data());
-      yAxisTitle = Form("%s [Hz]",var[i+3].Data());
+      yAxisTitle = Form("%s [%s]",var[i+3].Data(),units.Data());
       g[i+3]->Draw("alp");
       graph_df::SetLabels(g[i+3],Title,xAxisTitle,yAxisTitle);
       g[i+3]->Draw("alp");
@@ -177,7 +182,7 @@ int bcmStability(const char *confPath){
 
    // last one 
    Title      = Form("%s"     ,var[6].Data());
-   yAxisTitle = Form("%s [Hz]",var[6].Data());
+   yAxisTitle = Form("%s [%s]",var[6].Data(),units.Data());
    c1b->cd(4);
    g[6]->Draw("alp");
    graph_df::SetLabels(g[6],Title,xAxisTitle,yAxisTitle);

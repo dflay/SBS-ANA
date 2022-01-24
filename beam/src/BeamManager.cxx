@@ -32,7 +32,8 @@ BeamManager::~BeamManager(){
 void BeamManager::Clear(){
    fLeft.clear();
    fSBS.clear();
-   fEPICS.clear(); 
+   fEPICS.clear();
+   fRunList.clear(); 
    fEvtCntrLeft  = 0;
    fEvtCntrSBS   = 0;
    fEvtCntrEPICS = 0;
@@ -48,9 +49,16 @@ int BeamManager::LoadFile(const char *filePath,int runNumber){
       return rc;
    }
    // file is valid, read in the data from the trees 
-   rc = LoadDataFromTree(filePath,"Lrb"  ,runNumber); 
-   rc = LoadDataFromTree(filePath,"SBSrb",runNumber); 
-   rc = LoadEPICSDataFromTree(filePath,runNumber); 
+   int rc_lhrs  = LoadDataFromTree(filePath,"Lrb"  ,runNumber); 
+   int rc_sbs   = LoadDataFromTree(filePath,"SBSrb",runNumber); 
+   int rc_epics = LoadEPICSDataFromTree(filePath,runNumber); 
+
+   // add the run to the run list
+   // must at least have the SBS branch to be considered good 
+   if(rc_sbs==0){
+      std::cout << "[BeamManager::LoadFile]: Loaded run " << runNumber << std::endl;
+      fRunList.push_back(runNumber);
+   }
 
    return rc; 
 }
