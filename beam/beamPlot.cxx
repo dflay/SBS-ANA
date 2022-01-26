@@ -82,6 +82,17 @@ int beamPlot(const char *confPath){
    TH2F *p2D_B = mgr->GetTH2F("SBSrb","BPMB.x"  ,"BPMB.y"  ,NBin2D,-10E-3,10E-3,NBin2D,-10E-3,10E-3);
    TH2F *tgt   = mgr->GetTH2F("SBSrb","target.x","target.y",NBin2D,-4,4,NBin2D,-4,4);
 
+   // epics data
+   const int NE = 4; 
+   TGraph **ge = new TGraph*[NE];  
+   TH1F **he   = new TH1F*[NE];  
+   TString epicsVarName[NE] = {"IPM1H04A_XPOS","IPM1H04A_YPOS","IPM1H04E_XPOS","IPM1H04E_YPOS"};
+   for(int i=0;i<NE;i++){
+      ge[i] = mgr->GetTGraph("E",xAxis.Data(),epicsVarName[i].Data()); 
+      graph_df::SetParameters(ge[i],20,kBlack);
+      he[i] = mgr->GetTH1F("E",epicsVarName[i].Data(),NBin,min[i],max[i]); 
+   } 
+
    TCanvas *c1a = new TCanvas("c1a","Beam Check",1200,800);
    c1a->Divide(2,2);
 
@@ -168,6 +179,30 @@ int beamPlot(const char *confPath){
    c4->cd(); 
    tgt->Draw("colz");
    c4->Update();
+
+   TCanvas *c5 = new TCanvas("c5","EPICS BPM Data",1200,800);
+   c5->Divide(2,2); 
+
+   for(int i=0;i<NE;i++){
+      c5->cd(i+1); 
+      ge[i]->Draw("ap");
+      graph_df::SetLabels(ge[i],epicsVarName[i],xAxis,epicsVarName[i]); 
+      ge[i]->Draw("ap");
+      c5->Update();
+   }
+
+   TCanvas *c6 = new TCanvas("c6","EPICS BPM Data Histos",1200,800);
+   c6->Divide(2,2); 
+
+   for(int i=0;i<NE;i++){
+      c6->cd(i+1); 
+      he[i]->Draw("");
+      // graph_df::SetLabels(ge[i],epicsVarName[i],xAxis,epicsVarName[i]); 
+      he[i]->Draw("");
+      c6->Update();
+   }
+
+
 
    return 0;
 }

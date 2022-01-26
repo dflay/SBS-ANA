@@ -17,24 +17,39 @@ namespace util {
    class ROOTFileManager { 
 
       private:
-	 rootData_t fMetaData;  // structure of the ROOT file  
-	 CSVManager *fData;     // main data container 
+	 // rootData_t fMetaData;
+	 bool fIsDebug;
+	 std::vector<CSVManager *> fData;     // main data container 
+
+         std::vector<std::string> fTreeName;
+         std::vector<std::vector<std::string>> fBranchName; 
+         std::vector<std::vector<char>> fBufSize; 
 
          int CheckFile(const char *filePath); 
-         int LoadDataFromTree(const char *filePath,const char *treeName,std::vector<std::string> leafStructure);  
+         int LoadDataFromTree(const char *filePath,const char *treeName,std::vector<std::string> branch,std::vector<char> bufSize);  
 
       public: 
 	 ROOTFileManager();
 	 ~ROOTFileManager();
 
-         void SetMetaData(rootData_t data) { fMetaData = data; }
+         // void SetMetaData(rootData_t data) { fMetaData = data; }
 
 	 int LoadFile(rootData_t data);
+	 int LoadFileStructure(const char *inpath);
+	 int Clear(); 
 
 	 // templated methods
 	 template<typename T> 
-	    int GetVector(const char *branchName,std::vector<T> &out){
-	       fData->GetColumn_byName<T>(branchName,out); 
+	    int GetVector(const char *treeName,const char *branchName,std::vector<T> &out){
+	       // find the index corresponding to the tree name
+               std::string name = treeName;
+	       int ii=0; 
+               int NT = fTreeName.size(); 
+               for(int i=0;i<NT;i++){
+		  if(name.compare(fTreeName[i])==0) ii = i;
+               }
+	       // get the branch data 
+	       fData[ii]->GetColumn_byName<T>(branchName,out); 
 	       return 0;
 	    } 
 

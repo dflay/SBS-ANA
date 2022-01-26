@@ -28,6 +28,7 @@ typedef struct beamData {
    double target_y;               // beam position at target in y (using BPMs)  
    int runNumber;
    int event; 
+   int runEvent;
    // constructor 
    beamData(): 
       arm("NONE"),info("NONE"),
@@ -37,11 +38,12 @@ typedef struct beamData {
       bpmB_rawcur_1(0),bpmB_rawcur_2(0),bpmB_rawcur_3(0),bpmB_rawcur_4(0), 
       bpmA_x(0),bpmA_y(0),bpmB_x(0),bpmB_y(0),
       target_x(0),target_y(0),
-      runNumber(0),event(0) 
+      runNumber(0),event(0),runEvent(0) 
    {}  
    double getValue(std::string name){
       double val=0;
       if(name.compare("event")==0)            val = (double)event; 
+      if(name.compare("runEvent")==0)         val = (double)runEvent; 
       if(name.compare("run")==0)              val = (double)runNumber; 
       if(name.compare("time")==0)             val = (double)timestamp; 
       if(name.compare("timestamp")==0)        val = time; 

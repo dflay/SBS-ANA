@@ -127,7 +127,7 @@ int BeamManager::LoadDataFromTree(const char *filePath,const char *branchName,in
       //    time = 0;  
       // } 
       // pt.time_num    = time_num;  
-      // pt.time_den    = time_den;  
+      // pt.time_den    = time_den; 
       pt.arm           = branchName; 
       pt.runNumber     = runNumber;
       pt.bpmA_x        = bpmA_x; 
@@ -154,12 +154,14 @@ int BeamManager::LoadDataFromTree(const char *filePath,const char *branchName,in
       // }
       if(Branch.compare("Lrb")==0){
 	 // pt.time  = fLastTimeLeft + time; 
-	 pt.event = fEvtCntrLeft; 
+	 pt.event    = fEvtCntrLeft; 
+	 pt.runEvent = i;  
 	 fLeft.push_back(pt); 
 	 fEvtCntrLeft++;
       }else if(Branch.compare("SBSrb")==0){
 	 // pt.time  = fLastTimeSBS + time; 
-	 pt.event = fEvtCntrSBS; 
+	 pt.event    = fEvtCntrSBS; 
+	 pt.runEvent = i;  
 	 fSBS.push_back(pt); 
 	 fEvtCntrSBS++;
       }
