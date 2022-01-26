@@ -20,27 +20,21 @@
 
 int Test(){
 
-   // std::string var = "C";
-   // char v = (char)var; 
-   // std::cout << v << std::endl;
-
-   std::vector<CSVManager *> data; 
-
-   int N = 3;
-   int M = 10;
-   std::vector<double> v; 
-   for(int i=0;i<N;i++){
-      CSVManager *csv = new CSVManager();
-      csv->InitTable(M,1); 
-      for(int j=0;j<M;j++) v.push_back( i*5 ); 
-      csv->SetColumn<double>(0,v);   
-      data.push_back(csv);
-      data[i]->Print();
-      v.clear();
-   }
-
-   for(int i=0;i<N;i++) delete data[i]; 
-   data.clear(); 
+   // int N = 3;
+   // int M = 10;
+   // std::vector<double> v; 
+   // std::vector<CSVManager *> data; 
+   // for(int i=0;i<N;i++){
+   //    CSVManager *csv = new CSVManager();
+   //    csv->InitTable(M,1); 
+   //    for(int j=0;j<M;j++) v.push_back( i*5 ); 
+   //    csv->SetColumn<double>(0,v);   
+   //    data.push_back(csv);
+   //    data[i]->Print();
+   //    v.clear();
+   // }
+   // for(int i=0;i<N;i++) delete data[i]; 
+   // data.clear(); 
 
    util::ROOTFileManager *rfMgr = new util::ROOTFileManager(); 
    rfMgr->LoadFileStructure("./input/format/beam.csv");

@@ -156,7 +156,8 @@ namespace util {
 
       // create a new CSV object 
       CSVManager *data = new CSVManager();
-      data->InitTable(NN,NB); // init size of table; NN = num rows, NVAR = num columns  
+      data->InitTable(NN,NB);  // init size of table; NN = num rows, NVAR = num columns 
+      data->SetHeader(branch); // set the header using the branch names   
 
       // FIXME: How to handle different data types?
       for(int i=0;i<NN;i++){
