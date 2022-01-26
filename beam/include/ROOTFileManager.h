@@ -43,6 +43,7 @@ namespace util {
 	 int Clear(); 
 
          int Print(){
+	    if(fIsDebug) std::cout << "[ROOTFileManager::Print] Printing data to screen..." << std::endl;
 	    int N = fData.size();
             for(int i=0;i<N;i++){
 	       std::cout << Form("Tree: %s",fTreeName[i].c_str()) << std::endl;

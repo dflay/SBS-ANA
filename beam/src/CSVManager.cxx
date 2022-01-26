@@ -170,7 +170,7 @@ int CSVManager::Print(){
    // print to screen
    int NROW = fData.size();
    int NCOL = fHeader.size();
-   
+ 
    char myStr[200];
    if(fHeaderExists){
       sprintf(myStr,"%s",fHeader[0].c_str() );

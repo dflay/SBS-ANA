@@ -46,7 +46,7 @@ namespace util {
       std::vector<std::string> bb;  
       std::string theTree_prev=tree[0]; 
       const int N = branch.size();
-      for(int i=1;i<N;i++){
+      for(int i=0;i<N;i++){
          if(tree[i].compare(theTree_prev)!=0){
             // new tree name
             fTreeName.push_back(theTree_prev);
@@ -138,6 +138,7 @@ namespace util {
       TChain *ch = nullptr;
       ch = new TChain(treeName);
       ch->Add(filePath);
+      const int NN = ch->GetEntries(); // WARNING: must do this here so the tree registers in memory!
 
       // error checking
       if(ch==nullptr){
@@ -152,30 +153,51 @@ namespace util {
       }
        
       // passed all tests, now populate the fData container  
-      const int NN = ch->GetEntries();
       const int NB = branch.size();
 
-      std::vector<int> var_i;      // 32-bit signed integer
-      std::vector<float> var_f;    // 32-bit floating point 
-      std::vector<double> var_d;   // 64-bit floating point 
+      if(fIsDebug) std::cout << Form("[ROOTFileManager::LoadDataFromTree]: Setting addresses for %d branches...",NB) << std::endl;
+
+      std::vector<int> var_i(NB);      // 32-bit signed integer
+      std::vector<float> var_f(NB);    // 32-bit floating point 
+      std::vector<double> var_d(NB);   // 64-bit floating point 
       for(int i=0;i<NB;i++){
 	 if(bufSize[i]=='F') aTree->SetBranchAddress(branch[i].c_str(),&var_d[i]);
 	 if(bufSize[i]=='I') aTree->SetBranchAddress(branch[i].c_str(),&var_i[i]);
       }
 
+      if(fIsDebug) std::cout << Form("[ROOTFileManager::LoadDataFromTree]: Number of events = %d, number of branches = %d",NN,NB) << std::endl;
+
       // create a new CSV object 
       CSVManager *data = new CSVManager();
       data->InitTable(NN,NB);  // init size of table; NN = num rows, NVAR = num columns 
-      data->SetHeader(branch); // set the header using the branch names   
+      data->SetHeader(branch); // set the header using the branch names  
 
-      // FIXME: How to handle different data types?
       for(int i=0;i<NN;i++){
 	 aTree->GetEntry(i);
+	 if(fIsDebug) std::cout << Form("event %d:",i);
 	 for(int j=0;j<NB;j++){
-	    if(bufSize[i]=='F') data->SetElement<double>(i,j,var_d[j]);
-	    if(bufSize[i]=='I') data->SetElement<int>(i,j,var_i[j]);
+	    if(bufSize[j]=='F'){
+	       if(fIsDebug) std::cout << Form(" %.3lf",var_d[j]);  
+	       data->SetElement<double>(i,j,var_d[j]);
+            }
+	    if(bufSize[j]=='I'){
+	       if(fIsDebug) std::cout << Form(" %d",var_i[j]);  
+	       data->SetElement<int>(i,j,var_i[j]);
+            }
          }
+	 if(fIsDebug) std::cout << std::endl;
       }
+      if(fIsDebug) std::cout << "----------------" << std::endl;
+
+      // for diagnostics 
+      int NR = data->GetNumRows();
+      int NC = data->GetNumColumns();
+
+      if(fIsDebug){
+         std::cout << Form("[ROOTFileManager::LoadDataFromTree]: data num rows = %d, num cols = %d",NR,NC) << std::endl;
+	 data->PrintHeader();
+	 data->Print(); // FIXME: This crashes... 
+      } 
 
       // push-back on the fData vector 
       fData.push_back(data); 
