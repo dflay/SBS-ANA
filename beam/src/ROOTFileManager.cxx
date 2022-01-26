@@ -168,44 +168,45 @@ namespace util {
       if(fIsDebug) std::cout << Form("[ROOTFileManager::LoadDataFromTree]: Number of events = %d, number of branches = %d",NN,NB) << std::endl;
 
       // create a new CSV object 
-      CSVManager *data = new CSVManager();
-      data->InitTable(NN,NB);  // init size of table; NN = num rows, NVAR = num columns 
-      data->SetHeader(branch); // set the header using the branch names  
+      CSVManager *csv = new CSVManager();
+      csv->InitTable(NN,NB);  // init size of table; NN = num rows, NVAR = num columns 
+      csv->SetHeader(branch); // set the header using the branch names 
+
+      char msg[200]; 
+      int test_i=0;
+      double test_d=0;
 
       for(int i=0;i<NN;i++){
 	 aTree->GetEntry(i);
 	 if(fIsDebug) std::cout << Form("event %d:",i);
 	 for(int j=0;j<NB;j++){
 	    if(bufSize[j]=='F'){
-	       if(fIsDebug) std::cout << Form(" %.3lf",var_d[j]);  
-	       data->SetElement<double>(i,j,var_d[j]);
+	       csv->SetElement<double>(i,j,var_d[j]);
+	       test_d = csv->GetElement<double>(i,j); 
+	       sprintf(msg," %.7lf (stored = %.7lf)",var_d[j],test_d);  
+            }else if(bufSize[j]=='I'){
+	       csv->SetElement<int>(i,j,var_i[j]);
+	       test_i = csv->GetElement<int>(i,j); 
+	       sprintf(msg," %d (stored = %d)",var_i[j],test_i);  
             }
-	    if(bufSize[j]=='I'){
-	       if(fIsDebug) std::cout << Form(" %d",var_i[j]);  
-	       data->SetElement<int>(i,j,var_i[j]);
-            }
+	    if(fIsDebug) std::cout << msg;  
          }
 	 if(fIsDebug) std::cout << std::endl;
       }
       if(fIsDebug) std::cout << "----------------" << std::endl;
 
-      // for diagnostics 
-      int NR = data->GetNumRows();
-      int NC = data->GetNumColumns();
-
       if(fIsDebug){
-         std::cout << Form("[ROOTFileManager::LoadDataFromTree]: data num rows = %d, num cols = %d",NR,NC) << std::endl;
-	 data->PrintHeader();
-	 data->Print(); // FIXME: This crashes... 
+	 csv->PrintMetaData();
+	 csv->Print(); // FIXME: This crashes... 
       } 
 
       // push-back on the fData vector 
-      fData.push_back(data); 
+      fData.push_back(csv); 
 
       if(fIsDebug) std::cout << "[ROOTFileManager::LoadDataFromTree]: Done!" << std::endl; 
 
       // cleanup 
-      // delete data; // do we need this?
+      // delete csv; // do we need this?
       delete aTree;
       delete ch;
 

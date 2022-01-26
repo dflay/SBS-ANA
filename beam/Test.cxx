@@ -21,24 +21,28 @@
 
 int Test(){
 
+   // int NEV = 20; 
    // int N = 3;
-   // int M = 10;
-   // std::vector<double> v; 
+   // int M = 2;
+   // double iv=0,iw=0;
    // std::vector<CSVManager *> data; 
    // for(int i=0;i<N;i++){
    //    CSVManager *csv = new CSVManager();
-   //    csv->InitTable(M,1); 
-   //    for(int j=0;j<M;j++) v.push_back( i*5 ); 
-   //    csv->SetColumn<double>(0,v);   
+   //    csv->InitTable(NEV,M); 
+   //    for(int j=0;j<NEV;j++){
+   //       iv = i*3 + j*2;
+   //       iw = i*5 + j*7;  
+   //       csv->SetElement<double>(j,0,iv); 
+   //       csv->SetElement<double>(j,1,iw); 
+   //    } 
    //    data.push_back(csv);
    //    data[i]->Print();
-   //    v.clear();
+   //    // v.clear();
    // }
    // for(int i=0;i<N;i++) delete data[i]; 
    // data.clear(); 
 
    std::string prefix = "/lustre19/expphy/volatile/halla/sbs/flay/GMnAnalysis/rootfiles";
-
    util::rootData_t rfData; 
    rfData.fileName      = prefix + "/gmn_replayed-beam_12609_stream0_seg0_0.root";
    rfData.structurePath = "./input/format/beam.csv";  

@@ -28,6 +28,9 @@ int CSVManager::ClearData(){
 int CSVManager::InitTable(int NROW,int NCOL){
    fData.resize(NROW);
    for(int i=0;i<NROW;i++) fData[i].resize(NCOL);
+   for(int i=0;i<NROW;i++){
+      for(int j=0;j<NCOL;j++) fData[i][j] = "EMPTY"; 
+   }
    fNumRow = NROW;
    fNumCol = NCOL;
    return 0;
@@ -157,6 +160,14 @@ int CSVManager::GetColumnIndex_byName(std::string colName){
    for(int i=0;i<NH;i++) if( fHeader[i].compare(colName)==0 ) k = i;
    if(k<0) std::cout << "[CSVManager::GetColumnIndex_byName]: No column named '" << colName << "'" << std::endl;
    return k;
+}
+//______________________________________________________________________________
+int CSVManager::PrintMetaData(){
+   std::cout << "[CSVManager::PrintMetaData]: CSV object data" << std::endl;
+   std::cout << "Number of rows:    " << fNumRow << std::endl; 
+   std::cout << "Number of columns: " << fNumCol << std::endl;
+   if(fHeaderExists) PrintHeader();
+   return 0;
 }
 //______________________________________________________________________________
 int CSVManager::PrintHeader(){
