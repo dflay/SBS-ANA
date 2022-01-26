@@ -16,6 +16,9 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
 
+int GetStats(std::vector<std::string> var,std::vector<scalerData_t> data,
+             std::vector<double> &run,std::vector<std::vector<double>> &mean,std::vector<std::vector<double>> &stdev); 
+
 int bcmCheckRun(const char *confPath){
 
    // settings 
@@ -56,6 +59,9 @@ int bcmCheckRun(const char *confPath){
    // do stats by run number 
    std::vector<scalerData_t> rawData,data,RAW_DATA,DATA;
    mgr->GetVector_scaler("sbs",rawData);  
+
+   std::vector<epicsData_t> erawData,edata,ERAW_DATA,EDATA; 
+   mgr->GetVector_epics("E",erawData);  
 
    // load cuts 
    std::vector<cut_t> cutList; 
@@ -99,72 +105,39 @@ int bcmCheckRun(const char *confPath){
    TString varC[N] = {"unser.current","u1.current","unew.current","d1.current","d3.current","d10.current","dnew.current"};
 
    std::vector<double> run,mean,stdev;
+   std::vector<std::vector<double>> mm,ss;   // no cuts
+   std::vector<std::vector<double>> mmc,ssc; // with cuts 
 
    // get run stats for all variables
    int M=0;
    for(int i=0;i<N;i++){
-      bcm_util::GetStats_byRun(var[i].Data(),data,run,mean,stdev);
-      std::cout << Form("%s:",var[i].Data()) << std::endl; 
-      M = mean.size();
-      std::cout << "-- without cuts -- " << std::endl;
-      for(int j=0;j<M;j++){
-	 std::cout << Form("   run = %d, mean = %.3lf, stdev = %.3lf",(int)run[j],mean[j],stdev[j]) << std::endl;
-      }
+      bcm_util::GetStats_byRun(varC[i].Data(),data,run,mean,stdev);
+      // store results
+      mm.push_back(mean); 
+      ss.push_back(stdev); 
       // now with cuts 
       run.clear();
       mean.clear();
       stdev.clear();
-      bcm_util::GetStats_byRun(var[i].Data(),DATA,run,mean,stdev);
-      std::cout << "-- with cuts -- " << std::endl;
-      for(int j=0;j<M;j++){
-	 std::cout << Form("   run = %d, mean = %.3lf, stdev = %.3lf",(int)run[j],mean[j],stdev[j]) << std::endl;
-      }
-      std::cout << Form("====================================================") << std::endl;
-      // set up for next run 
+      bcm_util::GetStats_byRun(varC[i].Data(),DATA,run,mean,stdev);
+      // store results
+      mmc.push_back(mean); 
+      ssc.push_back(stdev); 
+      // set up for next variable 
       run.clear();
       mean.clear();
       stdev.clear();
    } 
 
-   // std::vector<double> run;
-   // std::vector<double> mean_uns,stdev_uns;
-   // std::vector<double> mean_unsi,stdev_unsi;
-   // std::vector<double> mean_unew,stdev_unew;
-   // std::vector<double> mean_u1,stdev_u1;
-   // std::vector<double> mean_d1,stdev_d1;
-   // std::vector<double> mean_d3,stdev_d3;
-   // std::vector<double> mean_d10,stdev_d10;
-   // std::vector<double> mean_dnew,stdev_dnew;
-   
-   // bcm_util::GetStats_byRun(var[0].Data(),data,run,mean_uns ,stdev_uns );
-   // run.clear();
-   // bcm_util::GetStats_byRun(var[1].Data(),data,run,mean_u1  ,stdev_u1  );
-   // run.clear();
-   // bcm_util::GetStats_byRun(var[2].Data(),data,run,mean_unew,stdev_unew);
-   // run.clear();
-   // bcm_util::GetStats_byRun(var[3].Data(),data,run,mean_d1  ,stdev_d1  );
-   // run.clear();
-   // bcm_util::GetStats_byRun(var[4].Data(),data,run,mean_d3  ,stdev_d3  );
-   // run.clear();
-   // bcm_util::GetStats_byRun(var[5].Data(),data,run,mean_d10 ,stdev_d10 );
-   // run.clear();
-   // bcm_util::GetStats_byRun(var[6].Data(),data,run,mean_dnew,stdev_dnew);
-   // run.clear();
-   // bcm_util::GetStats_byRun("unser.current",data,run,mean_unsi,stdev_unsi);
-
-   // if we're missing runs in the initial run list, 
-   // the analyzed run list is different (smaller) 
-   // int NNR = run.size();
-
-   // print to screen
-   // for(int i=0;i<NNR;i++){
-// //       std::cout << Form("run %05d: unser = %.3lf ± %.3lf, u1 = %.3lf ± %.3lf, unew = %.3lf ± %.3lf, d1 = %.3lf ± %.3lf, d3 = %.3lf ± %.3lf, d10 = %.3lf ± %.3lf, dnew = %.3lf ± %.3lf",
-// // 	    (int)run[i],mean_uns[i],stdev_uns[i],mean_u1[i],stdev_u1[i],mean_unew[i],stdev_unew[i],mean_d1[i],stdev_d1[i],mean_d3[i],stdev_d3[i],mean_d10[i],stdev_d10[i],mean_dnew[i],stdev_dnew[i]) << std::endl;
-   //    std::cout << Form("%05d,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf",
-   //                      (int)run[i],mean_uns[i],stdev_uns[i],mean_unsi[i],stdev_unsi[i],mean_u1[i],stdev_u1[i],
-   //                      mean_unew[i],stdev_unew[i],mean_d1[i],stdev_d1[i],mean_d3[i],stdev_d3[i],
-   //                      mean_d10[i],stdev_d10[i],mean_dnew[i],stdev_dnew[i]) << std::endl;
-   // }
+   // print results to screen
+   for(int i=0;i<N;i++){
+      std::cout << Form("%s: ",varC[i].Data()) << std::endl;
+      M = mm[i].size(); // run dimension 
+      for(int j=0;j<M;j++){
+	 std::cout << Form("   run %d: no cuts = %.3lf ± %.3lf, with cuts = %.3lf ± %.3lf",
+                           rr[j],mm[i][j],ss[i][j],mmc[i][j],ssc[i][j]) << std::endl;
+      }
+   } 
 
    // get BCM plots vs event number
    TLegend *L = new TLegend(0.6,0.6,0.8,0.8); 
@@ -230,26 +203,43 @@ int bcmCheckRun(const char *confPath){
    TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2");
    graph_df::SetParameters(gEPICSCurrent,20,kBlack);   
 
-   TCanvas *c2 = new TCanvas("c2","EPICS Current",1200,800);
-   c2->cd();
-
-   gEPICSCurrent->Draw("ap");
-   graph_df::SetLabels(gEPICSCurrent,"EPICS Current","Event Number","EPICS Current [#muA]"); 
-   gEPICSCurrent->Draw("ap");
-   c2->Update();
-
    TCanvas *c3 = new TCanvas("c3","Unser and BCM Current",1200,800);
-   c3->cd();
+   c3->Divide(1,2);
 
+   c3->cd(1);
    mgc->Draw("a"); 
-   graph_df::SetLabels(mgc,"Beam Currents","Run Event Number","Beam Current [#muA]"); 
+   graph_df::SetLabels(mgc,Form("Run %d: Beam Currents",rr[0]),"Run Scaler Event Number","Beam Current [#muA]");
+   graph_df::SetLabelSizes(mgc,0.05,0.06);  
    mgc->Draw("a");
    L->Draw("same"); 
    c3->Update(); 
+
+   c3->cd(2);
+   gEPICSCurrent->Draw("ap");
+   graph_df::SetLabels(gEPICSCurrent,"EPICS Current","EPICS Event Number","Beam Current [#muA]"); 
+   graph_df::SetLabelSizes(gEPICSCurrent,0.05,0.06);  
+   gEPICSCurrent->Draw("ap");
+   c3->Update();
 
    delete mgr;
    delete jmgr; 
 
    return 0;
 }
-
+//______________________________________________________________________________
+int GetStats(std::vector<std::string> var,std::vector<scalerData_t> data,
+             std::vector<double> &run,std::vector<std::vector<double>> &mean,std::vector<std::vector<double>> &stdev){
+   // get mean and stdev for all BCMs for all runs  
+   std::vector<double> mm,ss; 
+   const int NV = var.size();
+   for(int i=0;i<NV;i++){
+      bcm_util::GetStats_byRun(var[i].c_str(),data,run,mm,ss);
+      mean.push_back(mm);
+      stdev.push_back(ss);
+      // set up for next BCM variable
+      mm.clear();
+      ss.clear(); 
+      if(i!=NV-1) run.clear(); // delete until last value  
+   }
+   return 0;
+}
