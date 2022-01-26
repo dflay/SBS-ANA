@@ -76,7 +76,7 @@ namespace util {
 
       int NB = 0; 
       int NT = fTreeName.size();
-      // if(fIsDebug){
+      if(fIsDebug){
          std::cout << "[ROOTFileManager::LoadFileStructure]: Found " << NT << " trees: " << std::endl; 
          for(int i=0;i<NT;i++){
             std::cout << Form("Tree: %s",fTreeName[i].c_str()) << std::endl;
@@ -85,7 +85,7 @@ namespace util {
                std::cout << Form("   Branch: %s, bufSize = %c",fBranchName[i][j].c_str(),fBufSize[i][j]) << std::endl;
             }
          }
-      // }
+      }
       return 0;
    }
    //______________________________________________________________________________
@@ -118,8 +118,10 @@ namespace util {
 
       // load data from the tree
       const int NT = fTreeName.size();
+      if(fIsDebug) std::cout << "[ROOTFileManager::LoadFile]: Loading data from " << NT << " trees..." << std::endl;
       for(int i=0;i<NT;i++){
 	 rc = LoadDataFromTree(metaData.fileName.Data(),fTreeName[i].c_str(),fBranchName[i],fBufSize[i]);
+         if(rc!=0) std::cout << Form("[ROOTFileManager::LoadFile]: ERROR! Cannot read data for tree '%s'",fTreeName[i].c_str()) << std::endl;
       }
   
       return rc;
@@ -128,6 +130,9 @@ namespace util {
    int ROOTFileManager::LoadDataFromTree(const char *filePath,const char *treeName,
                                          std::vector<std::string> branch,
                                          std::vector<char> bufSize){
+
+      if(fIsDebug) std::cout << Form("[ROOTFileManager::LoadDataFromTree]: Trying tree '%s'",treeName) << std::endl;
+
       // load data from a tree
       // create the TChain and attach to the tree 
       TChain *ch = nullptr;
@@ -136,11 +141,15 @@ namespace util {
 
       // error checking
       if(ch==nullptr){
+	 std::cout << "[ROOTFileManager::LoadDataFromTree]: ERROR! Invalid chain" << std::endl;
 	 return 1;
       }
 
       TTree *aTree = ch->GetTree();
-      if(aTree==nullptr) return 1;
+      if(aTree==nullptr){
+	 std::cout << Form("[ROOTFileManager::LoadDataFromTree]: ERROR! Invalid tree '%s'",treeName) << std::endl;
+	 return 1;
+      }
        
       // passed all tests, now populate the fData container  
       const int NN = ch->GetEntries();
@@ -171,8 +180,12 @@ namespace util {
       // push-back on the fData vector 
       fData.push_back(data); 
 
-      // TODO: do we need to delete this?
-      // delete data; 
+      if(fIsDebug) std::cout << "[ROOTFileManager::LoadDataFromTree]: Done!" << std::endl; 
+
+      // cleanup 
+      // delete data; // do we need this?
+      delete aTree;
+      delete ch;
 
       return 0;
    }

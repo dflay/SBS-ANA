@@ -10,6 +10,7 @@
 #include "TPad.h"
 #include "TLine.h"
 
+#include "./include/rootData.h"
 #include "./include/scalerData.h"
 #include "./include/codaRun.h"
 #include "./src/Graph.cxx"
@@ -36,8 +37,16 @@ int Test(){
    // for(int i=0;i<N;i++) delete data[i]; 
    // data.clear(); 
 
-   util::ROOTFileManager *rfMgr = new util::ROOTFileManager(); 
-   rfMgr->LoadFileStructure("./input/format/beam.csv");
+   std::string prefix = "/lustre19/expphy/volatile/halla/sbs/flay/GMnAnalysis/rootfiles";
+
+   util::rootData_t rfData; 
+   rfData.fileName      = prefix + "/gmn_replayed-beam_12609_stream0_seg0_0.root";
+   rfData.structurePath = "./input/format/beam.csv";  
+  
+   util::ROOTFileManager *rfMgr = new util::ROOTFileManager();
+   rfMgr->SetDebug(); 
+   rfMgr->LoadFile(rfData);
+   rfMgr->Print(); 
    delete rfMgr; 
 
    // scalerData_t data; 

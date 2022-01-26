@@ -7,6 +7,8 @@
 #include <iostream>
 #include <string> 
 
+#include "TChain.h"
+#include "TTree.h"
 #include "TFile.h"
 
 #include "rootData.h"
@@ -34,10 +36,21 @@ namespace util {
 
          // void SetMetaData(rootData_t data) { fMetaData = data; }
 
+         void SetDebug(bool v=true) { fIsDebug = v; } 
+
 	 int LoadFile(rootData_t data);
 	 int LoadFileStructure(const char *inpath);
 	 int Clear(); 
 
+         int Print(){
+	    int N = fData.size();
+            for(int i=0;i<N;i++){
+	       std::cout << Form("Tree: %s",fTreeName[i].c_str()) << std::endl;
+	       fData[i]->Print();
+            }
+	    return 0;
+         }
+ 
 	 // templated methods
 	 template<typename T> 
 	    int GetVector(const char *treeName,const char *branchName,std::vector<T> &out){
