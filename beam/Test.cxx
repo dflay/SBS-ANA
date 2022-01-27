@@ -38,15 +38,8 @@ int Test(){
  
    util::ROOTFileManager *rfMgr = new util::ROOTFileManager();
    rfMgr->LoadFile(rfData.fileName.Data(),rfData.structurePath.Data());
-   rfMgr->Print();
-
-   // get a vector of data  
-   std::vector<double> unserRate; 
-   rfMgr->GetVector<double>("TSsbs","sbs.bcm.unser.rate",unserRate); 
-
-   const int N = unserRate.size();
-   for(int i=0;i<N;i++) std::cout << Form("%.3lf",unserRate[i]) << std::endl;
-  
+   rfMgr->Print(); 
+ 
    // make a histogram  
    TH1F *h = rfMgr->GetTH1F("TSsbs","sbs.bcm.unser.rate",1000,0,900E+3);
 
@@ -55,6 +48,13 @@ int Test(){
 
    h->Draw();
    c1->Update(); 
+
+   // get a vector of data  
+   std::vector<double> unserRate; 
+   rfMgr->GetVector<double>("TSsbs","sbs.bcm.unser.rate",unserRate); 
+
+   const int N = unserRate.size();
+   for(int i=0;i<N;i++) std::cout << Form("%.3lf",unserRate[i]) << std::endl;
  
    delete rfMgr; 
 
