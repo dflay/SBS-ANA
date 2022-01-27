@@ -20,7 +20,7 @@ namespace util {
       private:
 	 bool fIsDebug;
 
-         std::vector< std::vector<Event<double> *> > fData; // main data container 
+         std::vector< std::vector<Event<Double_t> *> > fData; // main data container 
 
          std::vector<std::string> fTreeName;
          std::vector<std::vector<std::string>> fBranchName; 
