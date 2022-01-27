@@ -7,9 +7,11 @@ namespace util {
    }
    //______________________________________________________________________________
    ROOTFileManager::~ROOTFileManager(){
+      int M=0;
       const int N = fData.size();
       for(int i=0;i<N;i++){
-	 delete fData[i];
+         M = fData[i].size(); 
+         for(int j=0;j<M;j++) delete fData[i][j];
 	 fBranchName[i].clear(); 
 	 fBufSize[i].clear(); 
       } 
@@ -21,16 +23,54 @@ namespace util {
       // clear the data structure
       // NOTE: We are not *deleting* the vector, just setting everything 
       // back to zero effectively 
+      int M=0;
       const int N = fData.size();
       for(int i=0;i<N;i++){
-	 fData[i]->ClearData();
+	 M = fData[i].size();
+	 for(int j=0;j<M;j++) fData[i][j]->ClearData();
 	 fBranchName[i].clear(); 
 	 fBufSize[i].clear(); 
       }
       return 0;
    }
    //______________________________________________________________________________
+   int ROOTFileManager::Print(){
+      if(fIsDebug) std::cout << "[ROOTFileManager::Print] Printing data to screen..." << std::endl;
+      int M=0;
+      int N = fData.size();
+      for(int i=0;i<N;i++){
+	 std::cout << Form("Tree: %s",fTreeName[i].c_str()) << std::endl;
+	 M = fData[i].size();
+	 for(int j=0;j<M;j++) fData[i][j]->Print();
+      }
+      return 0;
+   }
+   //______________________________________________________________________________
+   int ROOTFileManager::PrintFileStructure(){
+      int NT = fTreeName.size();
+      int NB = 0;
+      if(NT!=0){
+	 for(int i=0;i<NT;i++){
+            std::cout << Form("Tree: %s",fTreeName[i].c_str()) << std::endl;
+            NB = fBranchName[i].size();
+            for(int j=0;j<NB;j++){
+               std::cout << Form("   Branch: %s, bufSize = %c",fBranchName[i][j].c_str(),fBufSize[i][j]) << std::endl;
+            }
+         }
+      }
+      return 0;
+   }
+   //______________________________________________________________________________
    int ROOTFileManager::LoadFileStructure(const char *inpath){
+
+      // check to see if we have a config loaded 
+      int NB = 0;
+      int NT = fTreeName.size();
+      if(NT!=0){
+	 std::cout << "[ROOTFileManager::LoadFileStructure]: Already have trees and branches defined!" << std::endl;
+	 PrintFileStructure();
+      }
+
       // load in the list of trees and branches
       CSVManager *csv = new CSVManager();
       csv->ReadFile(inpath,true);
@@ -55,7 +95,10 @@ namespace util {
             fBufSize.push_back(buf);
             // clear branch history 
             bb.clear(); 
-            buf.clear(); 
+            buf.clear();
+	    // need to save branch and bufSize for next tree!
+	    bb.push_back(branch[i]); 
+	    buf.push_back((char)bufSize[i][0]); 
          }else{
             // for a given tree name, save the branches 
             bb.push_back(branch[i]); 
@@ -74,17 +117,9 @@ namespace util {
       bb.clear();
       buf.clear();
 
-      int NB = 0; 
-      int NT = fTreeName.size();
       if(fIsDebug){
          std::cout << "[ROOTFileManager::LoadFileStructure]: Found " << NT << " trees: " << std::endl; 
-         for(int i=0;i<NT;i++){
-            std::cout << Form("Tree: %s",fTreeName[i].c_str()) << std::endl;
-            NB = fBranchName[i].size();
-            for(int j=0;j<NB;j++){
-               std::cout << Form("   Branch: %s, bufSize = %c",fBranchName[i][j].c_str(),fBufSize[i][j]) << std::endl;
-            }
-         }
+         PrintFileStructure(); 
       }
       return 0;
    }
@@ -101,18 +136,18 @@ namespace util {
       return rc;
    }
    //______________________________________________________________________________
-   int ROOTFileManager::LoadFile(rootData_t metaData){
+   int ROOTFileManager::LoadFile(const char *filePath,const char *rfConfigPath){
       // load data from a ROOT file given the parameters defined in the rootData struct
       // data is loaded to the local CSV manager
-      int rc = CheckFile(metaData.fileName.Data());
+      int rc = CheckFile(filePath);
       if(rc!=0){
-	 std::cout << "[ROOTFileManager::LoadFile]: Cannot open the file " << metaData.fileName << std::endl;
+	 std::cout << "[ROOTFileManager::LoadFile]: Cannot open the file " << filePath << std::endl;
 	 return rc;
       }
 
-      rc = LoadFileStructure(metaData.structurePath.Data()); 
+      rc = LoadFileStructure(rfConfigPath); 
       if(rc!=0){
-	 std::cout << "[ROOTFileManager::LoadFile]: Cannot open the file " << metaData.structurePath << std::endl;
+	 std::cout << "[ROOTFileManager::LoadFile]: Cannot open the file " << rfConfigPath << std::endl;
 	 return rc;
       }
 
@@ -120,7 +155,7 @@ namespace util {
       const int NT = fTreeName.size();
       if(fIsDebug) std::cout << "[ROOTFileManager::LoadFile]: Loading data from " << NT << " trees..." << std::endl;
       for(int i=0;i<NT;i++){
-	 rc = LoadDataFromTree(metaData.fileName.Data(),fTreeName[i].c_str(),fBranchName[i],fBufSize[i]);
+	 rc = LoadDataFromTree(filePath,fTreeName[i].c_str(),fBranchName[i],fBufSize[i]);
          if(rc!=0) std::cout << Form("[ROOTFileManager::LoadFile]: ERROR! Cannot read data for tree '%s'",fTreeName[i].c_str()) << std::endl;
       }
   
@@ -157,56 +192,42 @@ namespace util {
 
       if(fIsDebug) std::cout << Form("[ROOTFileManager::LoadDataFromTree]: Setting addresses for %d branches...",NB) << std::endl;
 
-      std::vector<int> var_i(NB);      // 32-bit signed integer
-      std::vector<float> var_f(NB);    // 32-bit floating point 
-      std::vector<double> var_d(NB);   // 64-bit floating point 
+      std::vector<Int_t> var_i(NB);    // 32-bit signed integer
+      std::vector<Float_t> var_f(NB);  // 32-bit floating point 
+      std::vector<Double_t> var_d(NB); // 64-bit floating point 
       for(int i=0;i<NB;i++){
-	 if(bufSize[i]=='F') aTree->SetBranchAddress(branch[i].c_str(),&var_d[i]);
+	 if(bufSize[i]=='D') aTree->SetBranchAddress(branch[i].c_str(),&var_d[i]);
+	 if(bufSize[i]=='F') aTree->SetBranchAddress(branch[i].c_str(),&var_f[i]);
 	 if(bufSize[i]=='I') aTree->SetBranchAddress(branch[i].c_str(),&var_i[i]);
       }
 
       if(fIsDebug) std::cout << Form("[ROOTFileManager::LoadDataFromTree]: Number of events = %d, number of branches = %d",NN,NB) << std::endl;
 
-      // create a new CSV object 
-      CSVManager *csv = new CSVManager();
-      csv->InitTable(NN,NB);  // init size of table; NN = num rows, NVAR = num columns 
-      csv->SetHeader(branch); // set the header using the branch names 
-
-      char msg[200]; 
-      int test_i=0;
-      double test_d=0;
+      std::vector< Event<Double_t> * > data; 
 
       for(int i=0;i<NN;i++){
 	 aTree->GetEntry(i);
-	 if(fIsDebug) std::cout << Form("event %d:",i);
-	 for(int j=0;j<NB;j++){
-	    if(bufSize[j]=='F'){
-	       csv->SetElement<double>(i,j,var_d[j]);
-	       test_d = csv->GetElement<double>(i,j); 
-	       sprintf(msg," %.7lf (stored = %.7lf)",var_d[j],test_d);  
-            }else if(bufSize[j]=='I'){
-	       csv->SetElement<int>(i,j,var_i[j]);
-	       test_i = csv->GetElement<int>(i,j); 
-	       sprintf(msg," %d (stored = %d)",var_i[j],test_i);  
-            }
-	    if(fIsDebug) std::cout << msg;  
+	 // if(fIsDebug) std::cout << Form("event %d:",i);
+         // create a new event
+         // FIXME: How to handle different data types? This is good for *all* branches 
+         // being of type Double_t.  Be careful of casting? 
+         Event<Double_t> *evt = new Event<Double_t>();
+	 evt->SetID(i);  
+         evt->SetVariableNames(branch);  
+	 for(int j=0;j<NB;j++){ 
+	    // FIXME: Technically wrong. would need unique evt classes for Double_t, Float_t, etc...
+            if(bufSize[j]=='D') evt->SetData_byIndex(j,var_d[j]); 
+            if(bufSize[j]=='F') evt->SetData_byIndex(j,var_f[j]); 
+            if(bufSize[j]=='I') evt->SetData_byIndex(j,var_i[j]); 
          }
-	 if(fIsDebug) std::cout << std::endl;
+	 data.push_back(evt); 
       }
-      if(fIsDebug) std::cout << "----------------" << std::endl;
 
-      if(fIsDebug){
-	 csv->PrintMetaData();
-	 csv->Print(); // FIXME: This crashes... 
-      } 
-
-      // push-back on the fData vector 
-      fData.push_back(csv); 
+      fData.push_back(data); 
 
       if(fIsDebug) std::cout << "[ROOTFileManager::LoadDataFromTree]: Done!" << std::endl; 
 
       // cleanup 
-      // delete csv; // do we need this?
       delete aTree;
       delete ch;
 

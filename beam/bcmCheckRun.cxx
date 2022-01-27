@@ -16,6 +16,8 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
 
+TString GetTitle(std::vector<int> run); 
+
 int GetStats(std::vector<std::string> var,std::vector<scalerData_t> data,
              std::vector<double> &run,std::vector<std::vector<double>> &mean,std::vector<std::vector<double>> &stdev); 
 
@@ -61,7 +63,7 @@ int bcmCheckRun(const char *confPath){
    mgr->GetVector_scaler("sbs",rawData);  
 
    std::vector<epicsData_t> erawData,edata,ERAW_DATA,EDATA; 
-   mgr->GetVector_epics("E",erawData);  
+   mgr->GetVector_epics(erawData);  
 
    // load cuts 
    std::vector<cut_t> cutList; 
@@ -149,9 +151,9 @@ int bcmCheckRun(const char *confPath){
    TGraph **gac = new TGraph*[N]; 
    for(int i=0;i<N;i++){
       mg[i]  = new TMultiGraph();
-      gb[i]  = bcm_util::GetTGraph("runEvent",var[i].Data(),data); 
-      ga[i]  = bcm_util::GetTGraph("runEvent",var[i].Data(),DATA); 
-      gac[i] = bcm_util::GetTGraph("runEvent",varC[i].Data(),DATA); 
+      gb[i]  = bcm_util::GetTGraph("event",var[i].Data(),data); 
+      ga[i]  = bcm_util::GetTGraph("event",var[i].Data(),DATA); 
+      gac[i] = bcm_util::GetTGraph("event",varC[i].Data(),DATA); 
       graph_df::SetParameters(gb[i],21,kBlack);
       graph_df::SetParameters(ga[i],20,kRed);
       graph_df::SetParameters(gac[i],20,color[i]);
@@ -164,7 +166,7 @@ int bcmCheckRun(const char *confPath){
    TString Title,yAxisTitle;
    TString xAxisTitle = Form("Run Event Number");
 
-   TString canvasTitle = Form("Run %d: BCM Check",(int)rr[0]);
+   TString canvasTitle = GetTitle(rr); 
   
    TCanvas *c1a = new TCanvas("c1a",canvasTitle,1200,800);
    c1a->Divide(2,2);
@@ -203,12 +205,14 @@ int bcmCheckRun(const char *confPath){
    TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2");
    graph_df::SetParameters(gEPICSCurrent,20,kBlack);   
 
+   Title = GetTitle(rr); 
+
    TCanvas *c3 = new TCanvas("c3","Unser and BCM Current",1200,800);
    c3->Divide(1,2);
 
    c3->cd(1);
    mgc->Draw("a"); 
-   graph_df::SetLabels(mgc,Form("Run %d: Beam Currents",rr[0]),"Run Scaler Event Number","Beam Current [#muA]");
+   graph_df::SetLabels(mgc,Title,"Scaler Event Number","Beam Current [#muA]");
    graph_df::SetLabelSizes(mgc,0.05,0.06);  
    mgc->Draw("a");
    L->Draw("same"); 
@@ -225,6 +229,20 @@ int bcmCheckRun(const char *confPath){
    delete jmgr; 
 
    return 0;
+}
+//______________________________________________________________________________
+TString GetTitle(std::vector<int> run){
+   TString title="";
+   int first=0,last=0;
+   const int N = run.size();
+   if(N==0){
+      std::cout << "[GetTitle]: No runs!" << std::endl;
+   }else if(N==1){
+      title = Form("Run %d: Beam Current",run[0]);
+   }else{
+      title = Form("Run %d--%d: Beam Current",run[0],run[N-1]);
+   } 
+   return title;
 }
 //______________________________________________________________________________
 int GetStats(std::vector<std::string> var,std::vector<scalerData_t> data,

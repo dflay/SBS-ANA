@@ -11,17 +11,15 @@
 #include "TTree.h"
 #include "TFile.h"
 
-#include "rootData.h"
-
-// #include "CSVManager.h"
+// #include "Event.h"
 
 namespace util {
    class ROOTFileManager { 
 
       private:
-	 // rootData_t fMetaData;
 	 bool fIsDebug;
-	 std::vector<CSVManager *> fData;     // main data container 
+
+         std::vector< std::vector<Event<double> *> > fData; // main data container 
 
          std::vector<std::string> fTreeName;
          std::vector<std::vector<std::string>> fBranchName; 
@@ -34,39 +32,33 @@ namespace util {
 	 ROOTFileManager();
 	 ~ROOTFileManager();
 
-         // void SetMetaData(rootData_t data) { fMetaData = data; }
-
          void SetDebug(bool v=true) { fIsDebug = v; } 
 
-	 int LoadFile(rootData_t data);
-	 int LoadFileStructure(const char *inpath);
+         int Print(); 
 	 int Clear(); 
-
-         int Print(){
-	    if(fIsDebug) std::cout << "[ROOTFileManager::Print] Printing data to screen..." << std::endl;
-	    int N = fData.size();
-            for(int i=0;i<N;i++){
-	       std::cout << Form("Tree: %s",fTreeName[i].c_str()) << std::endl;
-	       fData[i]->Print();
-            }
-	    return 0;
-         }
+         int PrintFileStructure(); 
+	 int LoadFile(const char *filePath,const char *rfConfigPath);
+	 int LoadFileStructure(const char *inpath);
  
 	 // templated methods
 	 template<typename T> 
 	    int GetVector(const char *treeName,const char *branchName,std::vector<T> &out){
 	       // find the index corresponding to the tree name
                std::string name = treeName;
-	       int ii=0; 
+	       int k=0; 
                int NT = fTreeName.size(); 
                for(int i=0;i<NT;i++){
-		  if(name.compare(fTreeName[i])==0) ii = i;
+	          if(name.compare(fTreeName[i])==0) k = i;
                }
-	       // get the branch data 
-	       fData[ii]->GetColumn_byName<T>(branchName,out); 
+	       // get the branch data
+	       T val=0;
+	       int NEV = fData[k].size();
+               for(int i=0;i<NEV;i++){
+		  val = fData[k][i]->GetData_byName(branchName);
+		  out.push_back(val);
+               } 
 	       return 0;
 	    } 
-
    };  
 
 } //::util 

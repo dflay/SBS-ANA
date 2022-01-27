@@ -13,6 +13,7 @@
 #include "./include/rootData.h"
 #include "./include/scalerData.h"
 #include "./include/codaRun.h"
+#include "./src/Event.cxx"
 #include "./src/Graph.cxx"
 #include "./src/JSONManager.cxx"
 #include "./src/Utilities.cxx"
@@ -44,13 +45,21 @@ int Test(){
 
    std::string prefix = "/lustre19/expphy/volatile/halla/sbs/flay/GMnAnalysis/rootfiles";
    util::rootData_t rfData; 
-   rfData.fileName      = prefix + "/gmn_replayed-beam_12609_stream0_seg0_0.root";
+   rfData.fileName      = prefix + "/gmn_replayed-beam_13297_stream0_seg0_2.root";
    rfData.structurePath = "./input/format/beam.csv";  
-  
+ 
+   std::cout << "TRYING FILE: " << rfData.fileName << std::endl; 
+ 
    util::ROOTFileManager *rfMgr = new util::ROOTFileManager();
-   rfMgr->SetDebug(); 
-   rfMgr->LoadFile(rfData);
-   rfMgr->Print(); 
+   rfMgr->LoadFile(rfData.fileName.Data(),rfData.structurePath.Data());
+   rfMgr->Print();
+
+   std::vector<double> unserRate; 
+   rfMgr->GetVector<double>("TSsbs","sbs.bcm.unser.rate",unserRate); 
+
+   const int N = unserRate.size();
+   for(int i=0;i<N;i++) std::cout << Form("%.3lf",unserRate[i]) << std::endl;
+ 
    delete rfMgr; 
 
    // scalerData_t data; 
