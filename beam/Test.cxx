@@ -23,9 +23,14 @@
 int Test(){
 
    std::string prefix = "/lustre19/expphy/volatile/halla/sbs/flay/GMnAnalysis/rootfiles";
+
    util::rootData_t rfData; 
+   // path to the ROOT file
    rfData.fileName      = prefix + "/gmn_replayed-beam_13297_stream0_seg0_2.root";
-   rfData.structurePath = "./input/format/beam.csv";  
+   // path to the file that defines the ROOTfile structure
+   // this is a csv of the form: treeName,branchName,bufferSize
+   // example: TSsbs,sbs.bcm.unser.rate,D (D = Double_t, see TTree class def for details) 
+   rfData.structurePath = "./input/format/beam.csv";   
  
    std::cout << "TRYING FILE: " << rfData.fileName << std::endl; 
  
