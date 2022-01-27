@@ -28,8 +28,10 @@ int Test(){
    // path to the ROOT file
    rfData.fileName      = prefix + "/gmn_replayed-beam_13297_stream0_seg0_2.root";
    // path to the file that defines the ROOTfile structure
-   // this is a csv of the form: treeName,branchName,bufferSize
-   // example: TSsbs,sbs.bcm.unser.rate,D (D = Double_t, see TTree class def for details) 
+   // this is a csv of the form: treeName,branchName,bufferSize  
+   // example (must include the header below)
+   // treeName,branchName,bufSize 
+   // TSsbs,sbs.bcm.unser.rate,D (D = Double_t, see TTree class def for details) 
    rfData.structurePath = "./input/format/beam.csv";   
  
    std::cout << "TRYING FILE: " << rfData.fileName << std::endl; 
