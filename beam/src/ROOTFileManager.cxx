@@ -79,6 +79,7 @@ namespace util {
       if(NT!=0){
 	 std::cout << "[ROOTFileManager::LoadFileStructure]: Already have trees and branches defined!" << std::endl;
 	 PrintFileStructure();
+	 return 1;
       }
 
       // load in the list of trees and branches
@@ -131,6 +132,7 @@ namespace util {
          std::cout << "[ROOTFileManager::LoadFileStructure]: Found " << NT << " trees: " << std::endl; 
          PrintFileStructure(); 
       }
+
       return 0;
    }
    //______________________________________________________________________________
