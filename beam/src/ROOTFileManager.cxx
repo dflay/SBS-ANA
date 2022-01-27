@@ -34,6 +34,16 @@ namespace util {
       return 0;
    }
    //______________________________________________________________________________
+   int ROOTFileManager::GetTreeIndex(const char *treeName){
+      int k=0;
+      std::string name = treeName;
+      int NT = fTreeName.size();
+      for(int i=0;i<NT;i++){
+	 if(name.compare(fTreeName[i])==0) k = i;
+      }
+      return k;
+   }
+   //______________________________________________________________________________
    int ROOTFileManager::Print(){
       if(fIsDebug) std::cout << "[ROOTFileManager::Print] Printing data to screen..." << std::endl;
       int M=0;
@@ -232,5 +242,20 @@ namespace util {
       delete ch;
 
       return 0;
+   }
+   //______________________________________________________________________________
+   TH1F * ROOTFileManager::GetTH1F(const char *treeName,const char *branchName,
+                                   int NBin,double min,double max){
+      int i   = GetTreeIndex(treeName);
+      int NEV = fData[i].size();
+      double arg=0;
+      TString hname = Form("h%s_%s",treeName,branchName);
+      TString title = Form("%s.%s" ,treeName,branchName);
+      TH1F *h = new TH1F(hname,title,NBin,min,max);
+      for(int j=0;j<NEV;j++){
+         arg = fData[i][j]->GetData_byName(branchName); 
+	 h->Fill(arg);
+      }
+      return h;
    }
 } // ::util

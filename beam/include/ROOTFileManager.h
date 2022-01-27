@@ -10,6 +10,7 @@
 #include "TChain.h"
 #include "TTree.h"
 #include "TFile.h"
+#include "TH1F.h"
 
 // #include "Event.h"
 
@@ -39,17 +40,16 @@ namespace util {
          int PrintFileStructure(); 
 	 int LoadFile(const char *filePath,const char *rfConfigPath);
 	 int LoadFileStructure(const char *inpath);
- 
+         int GetTreeIndex(const char *treeName); 
+         
+	 TH1F *GetTH1F(const char *treeName,const char *branchName,int NBin,double min,double max);  
+
 	 // templated methods
 	 template<typename T> 
 	    int GetVector(const char *treeName,const char *branchName,std::vector<T> &out){
 	       // find the index corresponding to the tree name
                std::string name = treeName;
-	       int k=0; 
-               int NT = fTreeName.size(); 
-               for(int i=0;i<NT;i++){
-	          if(name.compare(fTreeName[i])==0) k = i;
-               }
+	       int k = GetTreeIndex(treeName);
 	       // get the branch data
 	       T val=0;
 	       int NEV = fData[k].size();
@@ -58,7 +58,8 @@ namespace util {
 		  out.push_back(val);
                } 
 	       return 0;
-	    } 
+	    }
+ 
    };  
 
 } //::util 
