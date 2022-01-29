@@ -27,6 +27,7 @@ class BCMManager {
    private:
       bool fIsDebug,fCalculateCurrent;
       int fVerbosity;  
+      int fLastRun,fLastRunEvtCntLeft,fLastRunEvtCntSBS;
       int fEvtCntrLeft,fEvtCntrSBS,fEvtCntrEPICS;
       double fLastTimeLeft,fLastTimeSBS; 
 

@@ -6,9 +6,12 @@
 typedef struct scalerData {
    std::string arm;       // arm (Left, sbs, or E) 
    std::string info;      // user notes 
-   double time;           // time in seconds                    
-   double time_num;       // time numerator: clock counts                
-   double time_den;       // time denominator: clock rate
+   double time;           // [RF clock] time in seconds                    
+   double time_num;       // [RF clock] time numerator: clock counts                
+   double time_den;       // [RF clock] time denominator: clock rate
+   double time103kHz;     // [103.7 kHz] time in seconds                    
+   double time103kHz_num; // [103.7 kHz] time numerator: clock counts                
+   double time103kHz_den; // [103.7 kHz] time denominator: clock rate
    double unserRate;      // Unser rate                  
    double unserCounts;    // Unser counts                
    double unserCurrent;   // Unser current                
@@ -42,7 +45,9 @@ typedef struct scalerData {
    int event;             // "global" event number -- that is, an entry number based on how many runs are chained together        
    // constructor  
    scalerData():
-      arm("NONE"),info("NONE"),time(0),time_num(0),time_den(0),
+      arm("NONE"),info("NONE"),
+      time(0),time_num(0),time_den(0),
+      time103kHz(0),time103kHz_num(0),time103kHz_den(0),
       unserRate(0),unserCounts(0),unserCurrent(0),
       u1Rate(0),u1Counts(0),u1Current(0),unewRate(0),unewCounts(0),unewCurrent(0),
       dnewRate(0),dnewCounts(0),dnewCurrent(0),d1Rate(0),d1Counts(0),d1Current(0),

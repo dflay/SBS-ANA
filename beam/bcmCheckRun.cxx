@@ -16,10 +16,18 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
 
+#define MICROAMPS 1E-6
+
 TString GetTitle(std::vector<int> run); 
 
 int GetStats(std::vector<std::string> var,std::vector<scalerData_t> data,
-             std::vector<double> &run,std::vector<std::vector<double>> &mean,std::vector<std::vector<double>> &stdev); 
+             std::vector<double> &run,std::vector<std::vector<double>> &mean,std::vector<std::vector<double>> &stdev);
+
+int GetCharge(std::vector<std::string> var,BCMManager *mgr,
+              std::vector<double> &run,std::vector<std::vector<double>> &mean,std::vector<std::vector<double>> &stdev); 
+
+int GetCharge(std::string var,std::vector<scalerData_t> allData,std::vector<double> run,
+              std::vector<double> &Q,std::vector<double> &dQ); 
 
 int bcmCheckRun(const char *confPath){
 
@@ -36,27 +44,49 @@ int bcmCheckRun(const char *confPath){
    std::string runPath      = jmgr->GetValueFromKey_str("run-path");  
    std::string cutPath      = jmgr->GetValueFromKey_str("cut-path"); 
    std::string bcmCalibPath = jmgr->GetValueFromKey_str("bcm-cc-path");   
+   
+   BCMManager *mgr = new BCMManager("NONE",bcmCalibPath.c_str(),false);
+
+   // temporary... 
+   std::vector<int> tempRun; 
+   std::vector<std::string> rfFileList; 
+   // tempRun.push_back(13297); rfFileList.push_back("gmn_replayed-beam_13297_stream0_seg0_2.root"); 
+   // tempRun.push_back(13301); rfFileList.push_back("gmn_replayed-beam_13301_stream0_seg0_14.root");
+   // tempRun.push_back(13305); rfFileList.push_back("gmn_replayed-beam_13305_stream0_seg0_106.root"); 
+   // tempRun.push_back(13305); rfFileList.push_back("gmn_replayed-beam_13305_stream0_seg0_106_1.root");
+   tempRun.push_back(13306); rfFileList.push_back("gmn_replayed-beam_13306_stream0_seg0_134.root"); 
+   tempRun.push_back(13306); rfFileList.push_back("gmn_replayed-beam_13306_stream0_seg0_134_1.root"); 
+   // tempRun.push_back(13310); rfFileList.push_back("gmn_replayed-beam_13310_stream0_seg0_107.root"); 
+   // tempRun.push_back(13310); rfFileList.push_back("gmn_replayed-beam_13310_stream0_seg0_107_1.root");
+   // tempRun.push_back(13311); rfFileList.push_back("gmn_replayed-beam_13311_stream0_seg0_109.root");
+   // tempRun.push_back(13311); rfFileList.push_back("gmn_replayed-beam_13311_stream0_seg0_109_1.root"); 
+
+   TString filePath;  
+   const int NTR = tempRun.size(); 
+   for(int i=0;i<NTR;i++){ 
+      std::cout << Form("Loading run %d",tempRun[i]) << std::endl;
+      filePath = Form("%s/%s",prefix.c_str(),rfFileList[i].c_str());
+      mgr->LoadFile(filePath,tempRun[i]);
+   }
 
    std::vector<codaRun_t> runList;  
    rc = bcm_util::LoadRuns(runPath.c_str(),runList);
    if(rc!=0) return 1; 
 
-   BCMManager *mgr = new BCMManager("NONE",bcmCalibPath.c_str(),false);
-
-   std::vector<int> md;
-   TString filePath;  
-   const int NR = runList.size();  
-   for(int i=0;i<NR;i++){ 
-      std::cout << Form("Loading run %d",runList[i].runNumber) << std::endl;
-      util_df::GetROOTFileMetaData(prefix.c_str(),runList[i].runNumber,md);
-      runList[i].stream       = md[0];  
-      runList[i].segmentBegin = md[1];  
-      runList[i].segmentEnd   = md[2];  
-      filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
-                      prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
-      mgr->LoadFile(filePath,runList[i].runNumber);
-      md.clear();
-   }
+   // std::vector<int> md;
+   // TString filePath;  
+   // const int NR = runList.size();  
+   // for(int i=0;i<NR;i++){ 
+   //    std::cout << Form("Loading run %d",runList[i].runNumber) << std::endl;
+   //    util_df::GetROOTFileMetaData(prefix.c_str(),runList[i].runNumber,md);
+   //    runList[i].stream       = md[0];  
+   //    runList[i].segmentBegin = md[1];  
+   //    runList[i].segmentEnd   = md[2];  
+   //    filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
+   //                    prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
+   //    mgr->LoadFile(filePath,runList[i].runNumber);
+   //    md.clear();
+   // }
 
    // do stats by run number 
    std::vector<scalerData_t> rawData,data,RAW_DATA,DATA;
@@ -106,29 +136,46 @@ int bcmCheckRun(const char *confPath){
    TString var[N]  = {"unser.rate"   ,"u1.rate"   ,"unew.rate"   ,"d1.rate"   ,"d3.rate"   ,"d10.rate"   ,"dnew.rate"};
    TString varC[N] = {"unser.current","u1.current","unew.current","d1.current","d3.current","d10.current","dnew.current"};
 
-   std::vector<double> run,mean,stdev;
-   std::vector<std::vector<double>> mm,ss;   // no cuts
-   std::vector<std::vector<double>> mmc,ssc; // with cuts 
+   // get the charge 
+   // std::vector<double> RR;
+   // std::vector<std::vector<double>> SS,MM; 
+   // std::vector<std::string> VAR; 
+   // for(int i=0;i<N;i++) VAR.push_back(varC[i].Data()); 
+   // GetCharge(VAR,mgr,RR,MM,SS);
+
+   std::vector<double> run,mean,stdev,q,dq;
+   std::vector<std::vector<double>> mm,ss,Q,dQ;     // no cuts
+   std::vector<std::vector<double>> mmc,ssc,Qc,dQc; // with cuts 
 
    // get run stats for all variables
    int M=0;
    for(int i=0;i<N;i++){
       bcm_util::GetStats_byRun(varC[i].Data(),data,run,mean,stdev);
+      GetCharge(varC[i].Data(),data,run,q,dq); 
       // store results
       mm.push_back(mean); 
-      ss.push_back(stdev); 
+      ss.push_back(stdev);
+      Q.push_back(q);  
+      dQ.push_back(dq);  
       // now with cuts 
       run.clear();
       mean.clear();
       stdev.clear();
+      q.clear();
+      dq.clear();
       bcm_util::GetStats_byRun(varC[i].Data(),DATA,run,mean,stdev);
+      GetCharge(varC[i].Data(),DATA,run,q,dq); 
       // store results
       mmc.push_back(mean); 
       ssc.push_back(stdev); 
+      Qc.push_back(q);  
+      dQc.push_back(dq);  
       // set up for next variable 
       run.clear();
       mean.clear();
       stdev.clear();
+      q.clear();
+      dq.clear();
    } 
 
    // print results to screen
@@ -136,8 +183,8 @@ int bcmCheckRun(const char *confPath){
       std::cout << Form("%s: ",varC[i].Data()) << std::endl;
       M = mm[i].size(); // run dimension 
       for(int j=0;j<M;j++){
-	 std::cout << Form("   run %d: no cuts = %.3lf ± %.3lf, with cuts = %.3lf ± %.3lf",
-                           rr[j],mm[i][j],ss[i][j],mmc[i][j],ssc[i][j]) << std::endl;
+	 std::cout << Form("   run %d: no cuts I = = %.3lf ± %.3lf, Q = %.5lf C, with cuts I = %.3lf ± %.3lf, Q = %.5lf C",
+                           rr[j],mm[i][j],ss[i][j],Q[i][j],mmc[i][j],ssc[i][j],Qc[i][j]) << std::endl;
       }
    } 
 
@@ -259,5 +306,113 @@ int GetStats(std::vector<std::string> var,std::vector<scalerData_t> data,
       ss.clear(); 
       if(i!=NV-1) run.clear(); // delete until last value  
    }
+   return 0;
+}
+//______________________________________________________________________________
+int GetCharge(std::string var,std::vector<scalerData_t> allData,std::vector<double> run,
+              std::vector<double> &Q,std::vector<double> &dQ){
+   // get the charge associated with the run
+
+   int M=0;
+   const int NT = allData.size(); 
+   const int NR = run.size(); 
+   double timeStep=0,timeStep103=0,deltaTime=0,chargeSum=0,chargeSum103=0;
+   std::vector<scalerData_t> runData;  
+   for(int i=0;i<NR;i++){
+      // get the run data
+      for(int j=0;j<NT;j++){ 
+	 if(allData[j].runNumber==(int)run[i]){
+	    runData.push_back(allData[j]); 
+         } 
+      }
+      // now loop over the run data
+      M = runData.size();
+      deltaTime = runData[M-1].time - runData[0].time;
+      // accumulate charge over the whole run for each variable  
+      for(int j=0;j<M;j++){
+         if(j==0){
+	    timeStep    = runData[1].time - runData[0].time;  
+	    timeStep103 = runData[1].time - runData[0].time;  
+	 }else{
+	    timeStep    = runData[j].time - runData[j-1].time;
+	    timeStep103 = runData[j].time - runData[j-1].time;
+	 }
+	 if(j<10) std::cout << Form("event %d, timeStep = %.3lf sec, timeStep(103kHz) = %.3lf",j,timeStep,timeStep103) << std::endl;
+	 chargeSum    += timeStep*runData[j].getValue(var)*MICROAMPS; // convert to Amps 
+	 chargeSum103 += timeStep103*runData[j].getValue(var)*MICROAMPS; // convert to Amps 
+      }
+      // print to screen 
+      std::cout << Form("run %d:",(int)run[i]) << std::endl;
+      std::cout << Form("   %15s: run time = %.3lf sec, Q(RF time) = %.5lf C, Q(103.9 kHz time) = %.5lf",
+                           var.c_str(),deltaTime,chargeSum,chargeSum103) << std::endl;
+      // fill output
+      Q.push_back(chargeSum);  
+      dQ.push_back(0); 
+      // clear for next run 
+      runData.clear();
+      chargeSum=0;
+      chargeSum103=0;
+   }
+
+   return 0;
+}
+//______________________________________________________________________________
+int GetCharge(std::vector<std::string> var,BCMManager *mgr,
+              std::vector<double> &run,std::vector<std::vector<double>> &mean,std::vector<std::vector<double>> &stdev){
+   // get the charge associated with each run
+  
+   std::vector<int> rr;
+   mgr->GetRunList(rr); 
+
+   // // remove duplicates if necessary 
+   // auto last = std::unique(rr.begin(), rr.end());
+   // rr.erase(last,rr.end());
+
+   const int NV = var.size();
+   double chargeSum[NV],chargeSum103[NV];  
+
+   int M=0;
+   double startTime=0,endTime=0,deltaTime=0;
+   double timeStep=0,timeStep103=0;
+   std::vector<scalerData_t> runData; 
+   const int NR = rr.size();
+   for(int i=0;i<NR;i++){
+      // get data for the run
+      mgr->GetVector_scaler("sbs",rr[i],runData);
+      // get start and end time of the run
+      M = runData.size();
+      startTime = runData[0].time; 
+      endTime   = runData[M-1].time;
+      deltaTime = endTime - startTime;
+      // accumulate charge over the whole run
+      // for each variable  
+      for(int j=0;j<M;j++){
+         if(j==0){
+	    timeStep    = runData[1].time - runData[0].time;  
+	    timeStep103 = runData[1].time - runData[0].time;  
+	 }else{
+	    timeStep    = runData[j].time - runData[j-1].time;
+	    timeStep103 = runData[j].time - runData[j-1].time;
+	 }
+	 if(j<10) std::cout << Form("event %d, timeStep = %.3lf sec, timeStep(103kHz) = %.3lf",j,timeStep,timeStep103) << std::endl;
+         for(int k=0;k<NV;k++){
+	    chargeSum[k]    += timeStep*runData[j].getValue(var[k])*MICROAMPS; // convert to Amps 
+	    chargeSum103[k] += timeStep103*runData[j].getValue(var[k])*MICROAMPS; // convert to Amps 
+         }
+      }
+      // print to screen 
+      std::cout << Form("run %d:",rr[i]) << std::endl;
+      for(int k=0;k<NV;k++){
+	 std::cout << Form("   %15s: run time = %.3lf sec, Q(RF time) = %.5lf C, Q(103.9 kHz time) = %.5lf",
+                           var[k].c_str(),deltaTime,chargeSum[k],chargeSum103[k]) << std::endl;
+      }
+      // clear for next run 
+      runData.clear();
+      for(int k=0;k<NV;k++){
+	 chargeSum[k] = 0;
+	 chargeSum103[k] = 0;
+      } 
+   } 
+   
    return 0;
 }

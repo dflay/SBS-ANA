@@ -9,6 +9,9 @@ BCMManager::BCMManager(const char *filePath,const char *ccDirPath,bool isDebug){
    fEvtCntrEPICS     = 0; 
    fLastTimeLeft     = 0; 
    fLastTimeSBS      = 0;
+   fLastRun          = 0; 
+   fLastRunEvtCntLeft = 0; 
+   fLastRunEvtCntSBS  = 0; 
 
    std::string path = filePath; 
    if(path.compare("NONE")!=0){
@@ -52,11 +55,19 @@ int BCMManager::LoadFile(const char *filePath,int runNumber){
    int rc_epics = LoadEPICSDataFromTree(filePath,runNumber); 
 
    // add the run to the run list
-   // must at least have the SBS branch to be considered good 
+   // must at least have the SBS branch to be considered good
+   // also make sure we don't have duplicates
+   int notFound=0;
+   int NR=fRunList.size(); 
    if(rc_sbs==0){
       std::cout << "[BCMManager::LoadFile]: Loaded run " << runNumber << std::endl;
-      fRunList.push_back(runNumber); 
+      for(int i=0;i<NR;i++){
+	 if(runNumber!=fRunList[i]) notFound += 1;
+      }
+      if(notFound==NR) fRunList.push_back(runNumber); // all runs don't match the new one, can add it 
    }
+
+   fLastRun = runNumber;
 
    return rc; 
 }
@@ -84,6 +95,7 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
    if(name.compare("TSsbs")==0)  arm = "sbs"; 
  
    double time=0,time_num=0,time_den=0; 
+   double time103kHz=0,time103kHz_num=0,time103kHz_den=0; 
    double unser_rate=0,unser_cnt=0;
    double u1_rate=0,u1_cnt=0;
    double unew_rate=0,unew_cnt=0;
@@ -121,9 +133,13 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
    if(arm.compare("Left")==0){
       aTree->SetBranchAddress(Form("Left.104kHz_CLK.cnt")       ,&time_num);
       aTree->SetBranchAddress(Form("Left.104kHz_CLK.rate")      ,&time_den);
+      aTree->SetBranchAddress(Form("Left.104kHz_CLK.cnt")       ,&time103kHz_num);
+      aTree->SetBranchAddress(Form("Left.104kHz_CLK.rate")      ,&time103kHz_den);
    }else if(arm.compare("sbs")==0){
       aTree->SetBranchAddress(Form("sbs.BBCalHi.RF.scaler")     ,&time_num);
       aTree->SetBranchAddress(Form("sbs.BBCalHi.RF.scalerRate") ,&time_den);
+      aTree->SetBranchAddress(Form("sbs.104kHz_CLK.cnt")        ,&time103kHz_num);
+      aTree->SetBranchAddress(Form("sbs.104kHz_CLK.rate")       ,&time103kHz_den);
    }
 
    scalerData_t pt; 
@@ -135,8 +151,15 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
       }else{
 	 time = 0;  
       } 
+      if(time103kHz_den!=0){
+	 time103kHz = time103kHz_num/time103kHz_den;
+      }else{
+	 time103kHz = 0;
+      }
       pt.time_num    = time_num;  
       pt.time_den    = time_den;  
+      pt.time103kHz_num = time103kHz_num;  
+      pt.time103kHz_den = time103kHz_den;  
       pt.arm         = arm; 
       pt.runNumber   = runNumber; 
       pt.unserRate   = unser_rate;  
@@ -158,19 +181,33 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
       }
       if(arm.compare("Left")==0){
 	 pt.time     = fLastTimeLeft + time; 
+	 pt.time103kHz = fLastTimeLeft + time103kHz; 
 	 pt.event    = fEvtCntrLeft;
-	 pt.runEvent = i; 
+	 if(runNumber==fLastRun){
+	    pt.runEvent = fLastRunEvtCntLeft + i; 
+	 }else{
+	    pt.runEvent = i; 
+	 }
 	 fLeft.push_back(pt); 
 	 fEvtCntrLeft++;
       }else if(arm.compare("sbs")==0){
-	 pt.time     = fLastTimeSBS + time; 
+	 pt.time       = fLastTimeSBS + time; 
+	 pt.time103kHz = fLastTimeSBS + time103kHz; 
 	 pt.event    = fEvtCntrSBS; 
-	 pt.runEvent = i; 
+	 if(runNumber==fLastRun){
+	    pt.runEvent = fLastRunEvtCntSBS + i; 
+	 }else{
+	    pt.runEvent = i; 
+	 }
 	 fSBS.push_back(pt); 
 	 fEvtCntrSBS++;
       }
    }
-  
+
+   // track number of events for this run
+   if(arm.compare("sbs")==0)  fLastRunEvtCntSBS  = NN; 
+   if(arm.compare("Left")==0) fLastRunEvtCntLeft = NN; 
+ 
    // track the last time registered 
    double lastTime=0; 
    if(arm.compare("Left")==0){

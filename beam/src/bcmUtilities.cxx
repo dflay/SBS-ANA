@@ -88,6 +88,9 @@ namespace bcm_util {
       RUN.push_back(run_prev);
       MEAN.push_back(mean);
       STDEV.push_back(stdev);
+      // const int NR = RUN.size();
+      // std::cout << "Found " << NR << " runs" << std::endl;
+      // for(int i=0;i<NR;i++) std::cout << Form("%d",(int)RUN[i]) << std::endl;  
       return 0;
    }
    //______________________________________________________________________________
