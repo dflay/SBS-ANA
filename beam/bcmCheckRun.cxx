@@ -132,6 +132,10 @@ int bcmCheckRun(const char *confPath){
       RAW_DATA.clear();  
    }
 
+   // NEV = DATA.size(); 
+   // for(int i=0;i<NEV;i++) DATA[i].Print("rate"); 
+   // return 0; 
+
    const int N = 7; 
    TString var[N]  = {"unser.rate"   ,"u1.rate"   ,"unew.rate"   ,"d1.rate"   ,"d3.rate"   ,"d10.rate"   ,"dnew.rate"};
    TString varC[N] = {"unser.current","u1.current","unew.current","d1.current","d3.current","d10.current","dnew.current"};
@@ -198,9 +202,9 @@ int bcmCheckRun(const char *confPath){
    TGraph **gac = new TGraph*[N]; 
    for(int i=0;i<N;i++){
       mg[i]  = new TMultiGraph();
-      gb[i]  = bcm_util::GetTGraph("event",var[i].Data(),data); 
-      ga[i]  = bcm_util::GetTGraph("event",var[i].Data(),DATA); 
-      gac[i] = bcm_util::GetTGraph("event",varC[i].Data(),DATA); 
+      gb[i]  = bcm_util::GetTGraph("time",var[i].Data(),data); 
+      ga[i]  = bcm_util::GetTGraph("time",var[i].Data(),DATA); 
+      gac[i] = bcm_util::GetTGraph("time",varC[i].Data(),DATA); 
       graph_df::SetParameters(gb[i],21,kBlack);
       graph_df::SetParameters(ga[i],20,kRed);
       graph_df::SetParameters(gac[i],20,color[i]);
@@ -211,7 +215,8 @@ int bcmCheckRun(const char *confPath){
    }
 
    TString Title,yAxisTitle;
-   TString xAxisTitle = Form("Run Event Number");
+   // TString xAxisTitle = Form("Run Event Number");
+   TString xAxisTitle = Form("Time [sec]");
 
    TString canvasTitle = GetTitle(rr); 
   
@@ -248,9 +253,18 @@ int bcmCheckRun(const char *confPath){
    mg[6]->Draw("alp");
    c1b->Update();
 
-   // make a plot of the beam current from EPICS 
-   TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2");
-   graph_df::SetParameters(gEPICSCurrent,20,kBlack);   
+   // make a plot of the beam current from EPICS
+   TMultiGraph *mge = new TMultiGraph();
+   TGraph *gEPICSCurrent_IBC = mgr->GetTGraph("E","time","IBC1H04CRCUR2");
+   TGraph *gEPICSCurrent_hac = mgr->GetTGraph("E","time","hac_bcm_average");
+   graph_df::SetParameters(gEPICSCurrent_IBC,20,kBlack);   
+   graph_df::SetParameters(gEPICSCurrent_hac,20,kRed  );   
+   mge->Add(gEPICSCurrent_IBC,"p"); 
+   mge->Add(gEPICSCurrent_hac,"p"); 
+
+   TLegend *Le = new TLegend(0.6,0.6,0.8,0.8);
+   Le->AddEntry(gEPICSCurrent_IBC,"IBC1H04CRCUR2"); 
+   Le->AddEntry(gEPICSCurrent_hac,"hac_bcm_average"); 
 
    Title = GetTitle(rr); 
 
@@ -259,17 +273,18 @@ int bcmCheckRun(const char *confPath){
 
    c3->cd(1);
    mgc->Draw("a"); 
-   graph_df::SetLabels(mgc,Title,"Scaler Event Number","Beam Current [#muA]");
+   graph_df::SetLabels(mgc,Title,xAxisTitle,"Beam Current [#muA]");
    graph_df::SetLabelSizes(mgc,0.05,0.06);  
    mgc->Draw("a");
    L->Draw("same"); 
    c3->Update(); 
 
    c3->cd(2);
-   gEPICSCurrent->Draw("ap");
-   graph_df::SetLabels(gEPICSCurrent,"EPICS Current","EPICS Event Number","Beam Current [#muA]"); 
-   graph_df::SetLabelSizes(gEPICSCurrent,0.05,0.06);  
-   gEPICSCurrent->Draw("ap");
+   mge->Draw("a");
+   graph_df::SetLabels(mge,"EPICS Current",xAxisTitle,"Beam Current [#muA]"); 
+   graph_df::SetLabelSizes(mge,0.05,0.06);  
+   mge->Draw("a");
+   Le->Draw("same"); 
    c3->Update();
 
    delete mgr;
@@ -337,14 +352,17 @@ int GetCharge(std::string var,std::vector<scalerData_t> allData,std::vector<doub
 	    timeStep    = runData[j].time - runData[j-1].time;
 	    timeStep103 = runData[j].time - runData[j-1].time;
 	 }
-	 if(j<10) std::cout << Form("event %d, timeStep = %.3lf sec, timeStep(103kHz) = %.3lf",j,timeStep,timeStep103) << std::endl;
-	 chargeSum    += timeStep*runData[j].getValue(var)*MICROAMPS; // convert to Amps 
+	 // if(j<10){
+	 //    std::cout << Form("event %d, timeStep(RF time) = %.3lf sec, timeStep(103kHz) = %.3lf",
+	 //                      j,timeStep,timeStep103) << std::endl;
+	 // }
+	 chargeSum    += timeStep*runData[j].getValue(var)*MICROAMPS;    // convert to Amps 
 	 chargeSum103 += timeStep103*runData[j].getValue(var)*MICROAMPS; // convert to Amps 
       }
       // print to screen 
       std::cout << Form("run %d:",(int)run[i]) << std::endl;
-      std::cout << Form("   %15s: run time = %.3lf sec, Q(RF time) = %.5lf C, Q(103.9 kHz time) = %.5lf",
-                           var.c_str(),deltaTime,chargeSum,chargeSum103) << std::endl;
+      std::cout << Form("   %15s: run time = %.3lf sec (%.3lf min), Q(RF time) = %.5lf C, Q(103.9 kHz time) = %.5lf",
+                           var.c_str(),deltaTime,deltaTime/60.,chargeSum,chargeSum103) << std::endl;
       // fill output
       Q.push_back(chargeSum);  
       dQ.push_back(0); 

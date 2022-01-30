@@ -54,7 +54,7 @@ for line in lines:
    if(cntr!=0):
       currentTime = util_df.getTime()
       tag = "[{0} {1}]".format(theDate,currentTime) 
-      cmd = "analyzer -b -q 'replay_beam.C({0},{1},{2},{3})'".format(run,firstEvent,lastEvent,nSegments)
+      cmd = "analyzer -b -q 'replay_beam.C({0},{1},{2},{3})' 2>&1 | tee ./log/run-{0}.log".format(run,firstEvent,lastEvent,nSegments)
       msg = "{0}: executing: {1}\n".format(tag,cmd) 
       logFile.write(msg)
       print(cmd)
