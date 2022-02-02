@@ -10,6 +10,8 @@
 #include "TLine.h"
 
 #include "./include/codaRun.h"
+#include "./src/CSVManager.cxx"
+#include "./src/BCMManager.cxx"
 #include "./src/Utilities.cxx"
 #include "./src/JSONManager.cxx"
 #include "./src/Graph.cxx"
@@ -47,53 +49,19 @@ int bcmCheckRun(const char *confPath){
    
    BCMManager *mgr = new BCMManager("NONE",bcmCalibPath.c_str(),false);
 
-   // temporary... 
-   std::vector<int> tempRun; 
-   std::vector<std::string> rfFileList; 
-   // tempRun.push_back(13297); rfFileList.push_back("gmn_replayed-beam_13297_stream0_seg0_2.root"); 
-   // tempRun.push_back(13301); rfFileList.push_back("gmn_replayed-beam_13301_stream0_seg0_14.root");
-   // tempRun.push_back(13305); rfFileList.push_back("gmn_replayed-beam_13305_stream0_seg0_106.root"); 
-   // tempRun.push_back(13305); rfFileList.push_back("gmn_replayed-beam_13305_stream0_seg0_106_1.root");
-   tempRun.push_back(13306); rfFileList.push_back("gmn_replayed-beam_13306_stream0_seg0_134.root"); 
-   tempRun.push_back(13306); rfFileList.push_back("gmn_replayed-beam_13306_stream0_seg0_134_1.root"); 
-   // tempRun.push_back(13310); rfFileList.push_back("gmn_replayed-beam_13310_stream0_seg0_107.root"); 
-   // tempRun.push_back(13310); rfFileList.push_back("gmn_replayed-beam_13310_stream0_seg0_107_1.root");
-   // tempRun.push_back(13311); rfFileList.push_back("gmn_replayed-beam_13311_stream0_seg0_109.root");
-   // tempRun.push_back(13311); rfFileList.push_back("gmn_replayed-beam_13311_stream0_seg0_109_1.root"); 
-
-   TString filePath;  
-   const int NTR = tempRun.size(); 
-   for(int i=0;i<NTR;i++){ 
-      std::cout << Form("Loading run %d",tempRun[i]) << std::endl;
-      filePath = Form("%s/%s",prefix.c_str(),rfFileList[i].c_str());
-      mgr->LoadFile(filePath,tempRun[i]);
-   }
-
    std::vector<codaRun_t> runList;  
-   rc = bcm_util::LoadRuns(runPath.c_str(),runList);
+   rc = util_df::LoadRunList(runPath.c_str(),prefix.c_str(),runList);
    if(rc!=0) return 1; 
 
-   // std::vector<int> md;
-   // TString filePath;  
-   // const int NR = runList.size();  
-   // for(int i=0;i<NR;i++){ 
-   //    std::cout << Form("Loading run %d",runList[i].runNumber) << std::endl;
-   //    util_df::GetROOTFileMetaData(prefix.c_str(),runList[i].runNumber,md);
-   //    runList[i].stream       = md[0];  
-   //    runList[i].segmentBegin = md[1];  
-   //    runList[i].segmentEnd   = md[2];  
-   //    filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
-   //                    prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
-   //    mgr->LoadFile(filePath,runList[i].runNumber);
-   //    md.clear();
-   // }
+   util_df::LoadBCMData(runList,mgr); 
+   if(rc!=0) return 1; 
 
    // do stats by run number 
    std::vector<scalerData_t> rawData,data,RAW_DATA,DATA;
    mgr->GetVector_scaler("sbs",rawData);  
 
-   std::vector<epicsData_t> erawData,edata,ERAW_DATA,EDATA; 
-   mgr->GetVector_epics(erawData);  
+   std::vector<epicsData_t> erawData,edata,eRAW_DATA,eDATA; 
+   mgr->GetVector_epics(edata);  
 
    // load cuts 
    std::vector<cut_t> cutList; 
@@ -103,33 +71,48 @@ int bcmCheckRun(const char *confPath){
 
    // sort the data by run number 
    std::sort(data.begin(),data.end(),compareScalerData_byRun); 
+   std::sort(edata.begin(),edata.end(),compareEPICSData_byRun); 
 
    std::vector<int> rr; 
    mgr->GetRunList(rr); 
    const int NNR = rr.size();
 
    char inpath_cuts[200]; 
-   std::vector<cut_t> runCuts;
+   std::vector<cut_t> runCuts,erunCuts; 
 
    // load and apply cuts
    int NEV=0,N_CUTS=0; 
    for(int i=0;i<NNR;i++){
       // grab a run and apply a list of cuts 
       mgr->GetVector_scaler("sbs",rr[i],RAW_DATA);
+      mgr->GetVector_epics(rr[i],eRAW_DATA);
       // load and apply cuts 
       sprintf(inpath_cuts,"./input/cut-list/bcm-calib/run-%d.json",rr[i]);
       cut_util::LoadCuts_json(inpath_cuts,runCuts);
+      cut_util::LoadCuts_epics_json(inpath_cuts,erunCuts);
+      // scaler data 
       N_CUTS = runCuts.size();
       if(N_CUTS>0){
-	 cut_util::ApplyCuts_alt(runCuts,RAW_DATA,DATA);
+	 cut_util::ApplyCuts_alt(runCuts ,RAW_DATA ,DATA);
       }else{
 	 // copy all data, no cuts
 	 NEV = RAW_DATA.size();
 	 for(int j=0;j<NEV;j++) DATA.push_back(RAW_DATA[j]);
       }
+      // epics data 
+      N_CUTS = erunCuts.size();
+      if(N_CUTS>0){
+	 cut_util::ApplyCuts_alt(erunCuts,eRAW_DATA,eDATA);
+      }else{
+	 // copy all data, no cuts
+	 NEV = eRAW_DATA.size();
+	 for(int j=0;j<NEV;j++) eDATA.push_back(eRAW_DATA[j]);
+      }
       // reset 
       runCuts.clear();
+      erunCuts.clear();
       RAW_DATA.clear();  
+      eRAW_DATA.clear();  
    }
 
    // NEV = DATA.size(); 
@@ -193,6 +176,7 @@ int bcmCheckRun(const char *confPath){
    } 
 
    // get BCM plots vs event number
+   std::string xVar = "runEvent"; // "time"; 
    TLegend *L = new TLegend(0.6,0.6,0.8,0.8); 
    int color[N] = {kBlack,kRed,kBlue,kGreen+2,kMagenta,kCyan+2,kOrange}; 
    TMultiGraph **mg  = new TMultiGraph*[N]; 
@@ -202,9 +186,9 @@ int bcmCheckRun(const char *confPath){
    TGraph **gac = new TGraph*[N]; 
    for(int i=0;i<N;i++){
       mg[i]  = new TMultiGraph();
-      gb[i]  = bcm_util::GetTGraph("time",var[i].Data(),data); 
-      ga[i]  = bcm_util::GetTGraph("time",var[i].Data(),DATA); 
-      gac[i] = bcm_util::GetTGraph("time",varC[i].Data(),DATA); 
+      gb[i]  = bcm_util::GetTGraph(xVar.c_str(),var[i].Data(),data); 
+      ga[i]  = bcm_util::GetTGraph(xVar.c_str(),var[i].Data(),DATA); 
+      gac[i] = bcm_util::GetTGraph(xVar.c_str(),varC[i].Data(),DATA); 
       graph_df::SetParameters(gb[i],21,kBlack);
       graph_df::SetParameters(ga[i],20,kRed);
       graph_df::SetParameters(gac[i],20,color[i]);
@@ -215,8 +199,8 @@ int bcmCheckRun(const char *confPath){
    }
 
    TString Title,yAxisTitle;
-   // TString xAxisTitle = Form("Run Event Number");
-   TString xAxisTitle = Form("Time [sec]");
+   TString xAxisTitle = Form("Run Event Number");
+   // TString xAxisTitle = Form("Time [sec]");
 
    TString canvasTitle = GetTitle(rr); 
   
@@ -254,17 +238,46 @@ int bcmCheckRun(const char *confPath){
    c1b->Update();
 
    // make a plot of the beam current from EPICS
-   TMultiGraph *mge = new TMultiGraph();
-   TGraph *gEPICSCurrent_IBC = mgr->GetTGraph("E","time","IBC1H04CRCUR2");
-   TGraph *gEPICSCurrent_hac = mgr->GetTGraph("E","time","hac_bcm_average");
-   graph_df::SetParameters(gEPICSCurrent_IBC,20,kBlack);   
-   graph_df::SetParameters(gEPICSCurrent_hac,20,kRed  );   
-   mge->Add(gEPICSCurrent_IBC,"p"); 
-   mge->Add(gEPICSCurrent_hac,"p"); 
+   const int NE = 2; 
+   TString evar[NE] = {"IBC1H04CRCUR2","hac_bcm_average"};
+   int ecolor[NE] = {kBlack,kRed};
+   int eMarker[NE] = {20,21};
 
+   TMultiGraph *mge = new TMultiGraph();
+
+   TGraph **geb = new TGraph*[NE]; 
+   TGraph **gea = new TGraph*[NE]; 
+   
    TLegend *Le = new TLegend(0.6,0.6,0.8,0.8);
-   Le->AddEntry(gEPICSCurrent_IBC,"IBC1H04CRCUR2"); 
-   Le->AddEntry(gEPICSCurrent_hac,"hac_bcm_average"); 
+
+   std::vector<double> er,eCur,deCur; 
+   std::vector<double> eCUR,deCUR; 
+
+   for(int i=0;i<NE;i++){
+      geb[i] = bcm_util::GetTGraph(xVar.c_str(),evar[i].Data(),edata);
+      gea[i] = bcm_util::GetTGraph(xVar.c_str(),evar[i].Data(),eDATA);
+      graph_df::SetParameters(geb[i],eMarker[i],kBlack);   
+      graph_df::SetParameters(gea[i],eMarker[i],kRed);   
+      mge->Add(geb[i],"p"); 
+      mge->Add(gea[i],"p"); 
+      Le->AddEntry(geb[i],evar[i],"p"); 
+      // get run stats 
+      bcm_util::GetStats_byRun_epics(evar[i].Data(),edata,er,eCur,deCur); 
+      er.clear();
+      bcm_util::GetStats_byRun_epics(evar[i].Data(),eDATA,er,eCUR,deCUR);
+      std::cout << Form("EPICS %s:",evar[i].Data()) << std::endl;
+      M = er.size();
+      for(int j=0;j<M;j++){
+	 std::cout << Form("   run %d: no cuts = %.3lf ± %.3lf, with cuts = %.3lf ± %.3lf",
+                           (int)er[j],eCur[j],deCur[j],eCUR[j],deCUR[j]) << std::endl;   
+      }
+      // set up for next variable
+      er.clear();
+      eCur.clear();
+      deCur.clear(); 
+      eCUR.clear();
+      deCUR.clear(); 
+   }
 
    Title = GetTitle(rr); 
 
@@ -361,7 +374,7 @@ int GetCharge(std::string var,std::vector<scalerData_t> allData,std::vector<doub
       }
       // print to screen 
       std::cout << Form("run %d:",(int)run[i]) << std::endl;
-      std::cout << Form("   %15s: run time = %.3lf sec (%.3lf min), Q(RF time) = %.5lf C, Q(103.9 kHz time) = %.5lf",
+      std::cout << Form("   %15s: run time = %.3lf sec (%.1lf min), Q(RF time) = %.5lf C, Q(103.9 kHz time) = %.5lf",
                            var.c_str(),deltaTime,deltaTime/60.,chargeSum,chargeSum103) << std::endl;
       // fill output
       Q.push_back(chargeSum);  

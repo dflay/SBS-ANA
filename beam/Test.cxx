@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <string_view>
 
 #include "TTree.h"
 #include "TFile.h"
@@ -9,13 +10,17 @@
 #include "TStyle.h"
 #include "TPad.h"
 #include "TLine.h"
+#include "TROOT.h"
+#include <ROOT/RDataFrame.hxx>
 
 #include "./include/rootData.h"
 #include "./include/scalerData.h"
 #include "./include/codaRun.h"
 #include "./src/Event.cxx"
 #include "./src/Graph.cxx"
+#include "./src/CSVManager.cxx"
 #include "./src/JSONManager.cxx"
+#include "./src/BCMManager.cxx"
 #include "./src/Utilities.cxx"
 #include "./src/bcmUtilities.cxx"
 #include "./src/ROOTFileManager.cxx"
@@ -34,29 +39,45 @@ int Test(){
    // TSsbs,sbs.bcm.unser.rate,D (D = Double_t, see TTree class def for details) 
    rfData.structurePath = "./input/format/beam.csv";   
  
-   std::cout << "TRYING FILE: " << rfData.fileName << std::endl; 
- 
-   util::ROOTFileManager *rfMgr = new util::ROOTFileManager();
-   rfMgr->LoadFile(rfData.fileName.Data(),rfData.structurePath.Data());
-   rfMgr->Print(); 
- 
-   // make a histogram  
-   TH1F *h = rfMgr->GetTH1F("TSsbs","sbs.bcm.unser.rate",1000,0,900E+3);
+   std::cout << "TRYING FILE: " << rfData.fileName << std::endl;
+
+   // ROOT dataframe
+   std::string_view rfName{rfData.fileName}; 
+   ROOT::RDataFrame sbsDF("TSsbs",rfName,{"TSsbs"});
+
+   // make a cut (lambda function) -- this doesn't work with tree variables with names like "branch.leaf.x"
+   // auto myUnserCut = [](double sbs.bcm.unser.rate){ return sbs.bcm.unser.rate>775E+3; };   
+
+   // make a histogram with a cut  
+   // auto h = sbsDF.Filter(myUnserCut).Histo1D("sbs.bcm.unser.rate");
+   auto h = sbsDF.Filter("sbs.bcm.unser.rate>775E+3").Histo1D("sbs.bcm.unser.rate");
 
    TCanvas *c1 = new TCanvas("c1","Test Plot",1200,800);
    c1->cd();
-
-   h->Draw();
+   h->DrawClone();
    c1->Update(); 
-
-   // get a vector of data  
-   std::vector<double> unserRate; 
-   rfMgr->GetVector<double>("TSsbs","sbs.bcm.unser.rate",unserRate); 
-
-   const int N = unserRate.size();
-   for(int i=0;i<N;i++) std::cout << Form("%.3lf",unserRate[i]) << std::endl;
  
-   delete rfMgr; 
+   // util::ROOTFileManager *rfMgr = new util::ROOTFileManager();
+   // rfMgr->LoadFile(rfData.fileName.Data(),rfData.structurePath.Data());
+   // rfMgr->Print(); 
+ 
+   // // make a histogram  
+   // TH1F *h = rfMgr->GetTH1F("TSsbs","sbs.bcm.unser.rate",1000,0,900E+3);
+
+   // TCanvas *c1 = new TCanvas("c1","Test Plot",1200,800);
+   // c1->cd();
+
+   // h->Draw();
+   // c1->Update(); 
+
+   // // get a vector of data  
+   // std::vector<double> unserRate; 
+   // rfMgr->GetVector<double>("TSsbs","sbs.bcm.unser.rate",unserRate); 
+
+   // const int N = unserRate.size();
+   // for(int i=0;i<N;i++) std::cout << Form("%.3lf",unserRate[i]) << std::endl;
+ 
+   // delete rfMgr; 
 
    // scalerData_t data; 
    // data.unserCurrent = 15.; 

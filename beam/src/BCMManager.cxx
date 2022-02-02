@@ -10,8 +10,9 @@ BCMManager::BCMManager(const char *filePath,const char *ccDirPath,bool isDebug){
    fLastTimeLeft     = 0; 
    fLastTimeSBS      = 0;
    fLastRun          = 0; 
-   fLastRunEvtCntLeft = 0; 
-   fLastRunEvtCntSBS  = 0; 
+   fLastRunEvtCntLeft  = 0; 
+   fLastRunEvtCntSBS   = 0; 
+   fLastRunEvtCntEPICS = 0; 
 
    std::string path = filePath; 
    if(path.compare("NONE")!=0){
@@ -245,31 +246,36 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
    TChain *ch = nullptr; 
    ch = new TChain("E"); 
    ch->Add(filePath);
+   int NN = ch->GetEntries(); 
 
    if(ch==nullptr){
       return 1;
    }
 
-   int NL = ch->GetEntries(); 
    TTree *aTree = ch->GetTree();
    if(aTree==nullptr){
       return 1;
    }
 
-   aTree->SetBranchAddress("hac_bcm_average",&hac_bcm_average);
    aTree->SetBranchAddress("IPM1H04A.XPOS"  ,&IPM1H04A_XPOS  );
    aTree->SetBranchAddress("IPM1H04A.YPOS"  ,&IPM1H04A_YPOS  );
    aTree->SetBranchAddress("IPM1H04E.XPOS"  ,&IPM1H04E_XPOS  );
    aTree->SetBranchAddress("IPM1H04E.YPOS"  ,&IPM1H04E_YPOS  );
+   aTree->SetBranchAddress("hac_bcm_average",&hac_bcm_average);
    aTree->SetBranchAddress("IBC1H04CRCUR2"  ,&IBC1H04CRCUR2  );
    aTree->SetBranchAddress("timestamp"      ,&epicsTime      );
 
    epicsData_t pt; 
-   for(int i=0;i<NL;i++){
+   for(int i=0;i<NN;i++){
       aTree->GetEntry(i); 
       pt.event           = fEvtCntrEPICS; 
       pt.runNumber       = runNumber;
       pt.time            = epicsTime;
+      if(runNumber==fLastRun){
+	 pt.runEvent = fLastRunEvtCntEPICS + i; 
+      }else{
+	 pt.runEvent = i; 
+      }
       pt.hac_bcm_average = hac_bcm_average; 
       pt.IBC1H04CRCUR2   = IBC1H04CRCUR2; 
       pt.IPM1H04A_XPOS   = IPM1H04A_XPOS;   
@@ -278,7 +284,10 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
       pt.IPM1H04E_YPOS   = IPM1H04E_YPOS; 
       fEPICS.push_back(pt);  
       fEvtCntrEPICS++; 
-   }
+   } 
+
+   // track number of events for this run
+   fLastRunEvtCntEPICS = NN; 
 
    delete aTree;
    delete ch; 
@@ -528,6 +537,15 @@ int BCMManager::GetVector_epics(std::vector<epicsData_t> &data){
    int NN = fEPICS.size();
    for(int i=0;i<NN;i++){
       data.push_back(fEPICS[i]); 
+   } 
+   return 0;
+}
+//______________________________________________________________________________
+int BCMManager::GetVector_epics(int run,std::vector<epicsData_t> &data){
+   // return a vector of the epicsData 
+   int NN = fEPICS.size();
+   for(int i=0;i<NN;i++){
+      if(run==fEPICS[i].runNumber) data.push_back(fEPICS[i]); 
    } 
    return 0;
 }

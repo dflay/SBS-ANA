@@ -1,8 +1,23 @@
 #include "../include/bcmUtilities.h"
-#include "CSVManager.cxx"
 #include "Math.cxx"
-#include "BCMManager.cxx"
+// #include "CSVManager.cxx"
+// #include "BCMManager.cxx"
 namespace bcm_util {
+   //______________________________________________________________________________
+   TGraph *GetTGraph(std::string xAxis,std::string yAxis,std::vector<epicsData_t> data){
+      // get a plot with data from a vector of scalerData 
+      double ix=0,iy=0;
+      std::vector<double> x,y; 
+      const int N = data.size();
+      for(int i=0;i<N;i++){
+	 ix = data[i].getValue(xAxis);
+	 iy = data[i].getValue(yAxis);
+	 x.push_back(ix); 
+	 y.push_back(iy); 
+      }
+      TGraph *g = graph_df::GetTGraph(x,y); 
+      return g;       
+   }
    //______________________________________________________________________________
    TGraph *GetTGraph(std::string xAxis,std::string yAxis,std::vector<scalerData_t> data){
       // get a plot with data from a vector of scalerData 
@@ -56,6 +71,46 @@ namespace bcm_util {
    //______________________________________________________________________________
    int GetStats_byRun(std::string var,std::vector<scalerData_t> data,
                       std::vector<double> &RUN,std::vector<double> &MEAN,std::vector<double> &STDEV){
+      // get stats of var vs run number  
+      int run_prev = data[0].runNumber;
+      std::vector<double> v;
+      double mean=0,stdev=0,theRun=0,theValue=0;
+      const int NEV = data.size();
+      for(int i=0;i<NEV;i++){
+	 theRun   = data[i].runNumber;
+         theValue = data[i].getValue(var);  
+	 if(run_prev==theRun){
+	    v.push_back(theValue);
+	 }else{
+	    // new run! compute stats 
+	    mean  = math_df::GetMean<double>(v);
+	    stdev = math_df::GetStandardDeviation<double>(v);
+	    // save results
+	    RUN.push_back(run_prev);
+	    MEAN.push_back(mean);
+	    STDEV.push_back(stdev);
+	    // set up for next event 
+	    v.clear();
+	    // the current value counts for the "next" run that didn't match the previous 
+	    v.push_back(theValue);
+	 }
+	 run_prev = theRun;
+      }
+      // compute stats on the last run  
+      mean  = math_df::GetMean<double>(v);
+      stdev = math_df::GetStandardDeviation<double>(v);
+      // save results
+      RUN.push_back(run_prev);
+      MEAN.push_back(mean);
+      STDEV.push_back(stdev);
+      // const int NR = RUN.size();
+      // std::cout << "Found " << NR << " runs" << std::endl;
+      // for(int i=0;i<NR;i++) std::cout << Form("%d",(int)RUN[i]) << std::endl;  
+      return 0;
+   }
+   //______________________________________________________________________________
+   int GetStats_byRun_epics(std::string var,std::vector<epicsData_t> data,
+                            std::vector<double> &RUN,std::vector<double> &MEAN,std::vector<double> &STDEV){
       // get stats of var vs run number  
       int run_prev = data[0].runNumber;
       std::vector<double> v;

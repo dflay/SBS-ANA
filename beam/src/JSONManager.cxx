@@ -14,7 +14,7 @@ bool JSONManager::DoesKeyExist(std::string keyName) const{
    if (it_key!=fObject.end() ){
       return true;  // not at the end of fObject -- found the key 
    }else{
-      std::cout << "[JSONManager::DoesKeyExist]: Key " << keyName << " does not exist!" << std::endl;
+      std::cout << "[JSONManager::DoesKeyExist]: Key '" << keyName << "' does not exist!" << std::endl;
       return false;  // at the end of fObject -- didn't find the key 
    }
 }

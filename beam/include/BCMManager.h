@@ -27,7 +27,7 @@ class BCMManager {
    private:
       bool fIsDebug,fCalculateCurrent;
       int fVerbosity;  
-      int fLastRun,fLastRunEvtCntLeft,fLastRunEvtCntSBS;
+      int fLastRun,fLastRunEvtCntLeft,fLastRunEvtCntSBS,fLastRunEvtCntEPICS;
       int fEvtCntrLeft,fEvtCntrSBS,fEvtCntrEPICS;
       double fLastTimeLeft,fLastTimeSBS; 
 
@@ -71,6 +71,7 @@ class BCMManager {
       int GetVector_scaler(const char *arm,std::vector<scalerData_t> &data); 
       int GetVector_scaler(const char *arm,int run,std::vector<scalerData_t> &data); 
       int GetVector_epics(std::vector<epicsData_t> &data);
+      int GetVector_epics(int run,std::vector<epicsData_t> &data);
 
       int GetRunList(std::vector<int> &r){
 	 const int NR = fRunList.size();

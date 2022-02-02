@@ -33,6 +33,44 @@ namespace cut_util {
 	 data.push_back(pt);  
       }
       return 0;
+   }
+   //______________________________________________________________________________
+   int LoadCuts_epics_json(const char *inpath,std::vector<cut_t> &data){
+      // load cuts into a JSON object first, then populate the vector of type cut_t
+      // generally, this is a vector of cuts on a single x variable (cut-var), for a given 
+      // y variable (dev).  The key "num-cuts" defines the number of cut pairs (min,max) 
+      // to apply to the data   
+      JSONManager *jmgr = new JSONManager();
+      int rc = jmgr->ReadFile(inpath);
+      if(rc!=0){
+	 delete jmgr;
+	 return 1;
+      } 
+
+      std::string dev     = jmgr->GetValueFromKey_str("dev-epics");
+      std::string cut_var = jmgr->GetValueFromKey_str("cut-var-epics");
+     
+      int NC = jmgr->GetValueFromKey<int>("num-cuts-epics"); 
+ 
+      std::vector<double> min,max; 
+      jmgr->GetVectorFromKey<double>("min-epics",NC,min);  
+      jmgr->GetVectorFromKey<double>("max-epics",NC,max); 
+
+      delete jmgr;  
+
+      // std::cout << dev << std::endl; 
+      // std::cout << cut_var << std::endl;
+      // std::cout << NC << std::endl;
+ 
+      cut_t pt;
+      for(int i=0;i<NC;i++){
+         pt.dev     = dev; 
+	 pt.cut_var = cut_var;
+         pt.low     = min[i];  
+         pt.high    = max[i]; 
+	 data.push_back(pt);  
+      }
+      return 0;
    } 
    //______________________________________________________________________________
    int LoadCuts(const char *inpath,std::vector<cut_t> &data){
@@ -165,6 +203,60 @@ namespace cut_util {
 
       // effectively no cut, pass the event
       if(cut.low==cut.high) return true;
+
+      double val = event.getValue(cut.cut_var); 
+      // check if the event passes the cut  
+      bool pass = false;
+      if( (val>cut.low)&&(val<cut.high) ) pass = true;
+      return pass; 
+   }
+   //______________________________________________________________________________
+   int ApplyCuts_alt(std::vector<cut_t> cutList,std::vector<epicsData_t> in,std::vector<epicsData_t> &out){
+      // apply cuts event by event according to a list of cuts
+      // use for ONE BCM variable as a function of event number (or other good x axis)
+      // input: 
+      // - cutList: a list of cuts with a min and max range. Must define the variable cut_var in cut struct 
+      // - in: input scaler data 
+      // output: 
+      // - out: scaler data that passed the cuts   
+      const int NC  = cutList.size();
+      const int NEV = in.size(); 
+
+      int fail=0,success=0;
+      bool pass=false,passAll=false;
+
+      for(int i=0;i<NEV;i++){
+	 // loop over cuts 
+	 for(int j=0;j<NC;j++){
+	    pass = PassCut_alt(cutList[j],in[i]);
+	    if(pass==true){
+	       success++;
+            } 
+	 }
+	 // // check to see if all cuts passed
+         // if(fail==0){
+	 //    passAll = true;
+         // }else{
+	 //    passAll = false;
+         // }
+         // if we passed at least one cut, fill the output vector 
+         // (usually exactly one success over all cuts)   
+         if(success>0) out.push_back(in[i]);
+	 // reset for next event  
+	 fail = 0;
+	 pass = false;
+	 success = 0;
+	 // passAll = false; 
+      } 
+      return 0;
+   }
+   //______________________________________________________________________________
+   bool PassCut_alt(cut_t cut,epicsData_t event){
+      // check to see if the event data passes the cut
+      // based on the variable name in the cut struct, get the associated value 
+
+      // effectively no cut, pass the event
+      if(cut.low==cut.high) return true; 
 
       double val = event.getValue(cut.cut_var); 
       // check if the event passes the cut  

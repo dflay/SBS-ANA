@@ -11,7 +11,10 @@
 
 #include "./include/codaRun.h"
 #include "./src/Graph.cxx"
+#include "./src/BCMManager.cxx"
+#include "./src/CSVManager.cxx"
 #include "./src/JSONManager.cxx"
+#include "./src/Utilities.cxx"
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
 
@@ -33,24 +36,20 @@ int bcmCalibrate_new(const char *confPath){
 
    // read input configuration file 
    JSONManager *jmgr = new JSONManager(confPath);
-   std::string prefix  = jmgr->GetValueFromKey_str("ROOTfile-path"); 
-   std::string runPath = jmgr->GetValueFromKey_str("run-path");  
-   std::string cutPath = jmgr->GetValueFromKey_str("cut-path");  
+   std::string prefix    = jmgr->GetValueFromKey_str("ROOTfile-path"); 
+   std::string runPath   = jmgr->GetValueFromKey_str("run-path");  
+   std::string cutPath   = jmgr->GetValueFromKey_str("cut-path");  
+   std::string bcmCCPath = jmgr->GetValueFromKey_str("bcm-cc-path");  
+   std::string outdir    = jmgr->GetValueFromKey_str("output-dir");  
 
    std::vector<codaRun_t> runList;  
-   rc = bcm_util::LoadRuns(runPath.c_str(),runList);
+   rc = util_df::LoadRunList(runPath.c_str(),prefix.c_str(),runList);
    if(rc!=0) return 1; 
 
-   BCMManager *mgr = new BCMManager("NONE","./output/calib-coeff",false);
+   BCMManager *mgr = new BCMManager("NONE",bcmCCPath.c_str(),false);
 
-   TString filePath;  
-   const int NR = runList.size();  
-   for(int i=0;i<NR;i++){ 
-      // std::cout << Form("Loading run %d",runList[i].runNumber) << std::endl;
-      filePath = Form("%s/gmn_replayed-beam_%d_stream%d_seg%d_%d.root",
-                      prefix.c_str(),runList[i].runNumber,runList[i].stream,runList[i].segmentBegin,runList[i].segmentEnd);
-      mgr->LoadFile(filePath,runList[i].runNumber);
-   }
+   rc = util_df::LoadBCMData(runList,mgr);
+   if(rc!=0) return 1; 
 
    // do stats by run number 
    std::vector<scalerData_t> rawData,data;
@@ -64,7 +63,7 @@ int bcmCalibrate_new(const char *confPath){
 
    // sort the data by run number 
    std::sort(data.begin(),data.end(),compareScalerData_byRun); 
-
+   
    std::vector<int> run;
    mgr->GetRunList(run);
    const int NNR = run.size();
@@ -75,23 +74,25 @@ int bcmCalibrate_new(const char *confPath){
 
    // we load the requested beam current into the codaRun::info data field as a check
    // so we will populate this vector 
-   double argC=0; 
-   std::vector<double> reqCurrent; 
-   for(int i=0;i<NNR;i++){
-      for(int j=0;j<NR;j++){
-	 if(run[i]==runList[j].runNumber){
-	    argC = std::atof(runList[j].info.c_str());
-	    reqCurrent.push_back(argC); 
-         }
-      }
-   } 
+   // double argC=0; 
+   std::vector<double> reqCurrent,reqCurrentErr; 
+   // for(int i=0;i<NNR;i++){
+   //    for(int j=0;j<NR;j++){
+   //       if(run[i]==runList[j].runNumber){
+   //          argC = std::atof(runList[j].info.c_str());
+   //          // reqCurrent.push_back(argC); 
+   //       }
+   //    }
+   // } 
 
+   std::vector<epicsData_t> eRAW_DATA,eDATA;
    std::vector<scalerData_t> RAW_DATA,DATA;
-   std::vector<cut_t> runCuts; 
+   std::vector<cut_t> runCuts,erunCuts; 
 
    char inpath_cuts[200]; 
 
-   // std::string theVar = "unser.rate"; 
+   std::vector<double> mean_ibc,stdev_ibc; 
+   std::vector<double> mean_hac,stdev_hac; 
 
    std::vector<double> rr,mean_uns,stdev_uns;
    std::vector<double> mean_unsi,stdev_unsi;
@@ -101,6 +102,7 @@ int bcmCalibrate_new(const char *confPath){
    std::vector<double> U1,U1E,UN,UNE;
    std::vector<double> D1,D1E,DN,DNE;
    std::vector<double> D3,D3E,D10,D10E;
+   std::vector<double> hacCurrent,hacCurrentErr;
 
    std::vector<double> mean_u1,stdev_u1;
    std::vector<double> mean_unew,stdev_unew;
@@ -112,11 +114,14 @@ int bcmCalibrate_new(const char *confPath){
    int NEV=0,N_CUTS=0; 
    double argDiff=0,argDiffErr=0;
    for(int i=0;i<NNR;i++){
+      std::cout << Form("Processing run %d",(int)run[i]) << std::endl;
       // grab a run and apply a list of cuts 
       mgr->GetVector_scaler("sbs",run[i],RAW_DATA);
+      mgr->GetVector_epics(run[i],eRAW_DATA);
       // load and apply cuts
       sprintf(inpath_cuts,"./input/cut-list/bcm-calib/run-%d.json",run[i]);  
       cut_util::LoadCuts_json(inpath_cuts,runCuts);
+      cut_util::LoadCuts_epics_json(inpath_cuts,erunCuts);
       N_CUTS = runCuts.size();
       if(N_CUTS>0){
 	 cut_util::ApplyCuts_alt(runCuts,RAW_DATA,DATA);
@@ -125,6 +130,15 @@ int bcmCalibrate_new(const char *confPath){
 	 NEV = RAW_DATA.size();
 	 for(int j=0;j<NEV;j++) DATA.push_back(RAW_DATA[j]); 
       } 
+      // epics data 
+      N_CUTS = erunCuts.size();
+      if(N_CUTS>0){
+	 cut_util::ApplyCuts_alt(erunCuts,eRAW_DATA,eDATA);
+      }else{
+	 // copy all data, no cuts
+	 NEV = eRAW_DATA.size();
+	 for(int j=0;j<NEV;j++) eDATA.push_back(eRAW_DATA[j]);
+      }
       // do some stats 
       bcm_util::GetStats_byRun("unser.current",DATA,rr,mean_unsi,stdev_unsi);
       rr.clear();
@@ -141,13 +155,20 @@ int bcmCalibrate_new(const char *confPath){
       bcm_util::GetStats_byRun(var[5].Data(),DATA,rr,mean_d10 ,stdev_d10 );
       rr.clear();
       bcm_util::GetStats_byRun(var[6].Data(),DATA,rr,mean_dnew,stdev_dnew);
-      // FIXME: arbitrary fix for beam off runs 
-      // if(reqCurrent[i]==0) mean_unsi[0] = 0; 
-      std::cout << Form("run %d: EPICS current = %.3lf, unser current = %.3lf ± %.3lf, unser rate = %.3lf ± %.3lf",
-                        (int)rr[0],reqCurrent[i],mean_unsi[0],stdev_unsi[0],mean_uns[0],stdev_uns[0]) << std::endl;
-      // save for diagnostic plot 
-      argDiff    = (reqCurrent[i] - mean_unsi[0]);
-      argDiffErr = stdev_unsi[0];  
+      // epics current 
+      bcm_util::GetStats_byRun_epics("IBC1H04CRCUR2"  ,eDATA,rr,mean_ibc,stdev_ibc); 
+      rr.clear();
+      bcm_util::GetStats_byRun_epics("hac_bcm_average",eDATA,rr,mean_hac,stdev_hac);
+      // print to screen
+      std::cout << Form("run %d: EPICS IBC1H04CRCUR2 = %.3lf ± %.3lf, EPICS hac_bcm_average = %.3lf ± %.3lf, unser current = %.3lf ± %.3lf",
+                        (int)rr[0],mean_ibc[0],stdev_ibc[0],mean_hac[0],stdev_hac[0],mean_unsi[0],stdev_unsi[0]) << std::endl;
+      // save for diagnostic plot
+      reqCurrent.push_back(mean_ibc[0]);  
+      reqCurrentErr.push_back(stdev_ibc[0]);  
+      hacCurrent.push_back(mean_hac[0]);  
+      hacCurrentErr.push_back(stdev_hac[0]);  
+      argDiff    = (mean_ibc[0] - mean_unsi[0]);
+      argDiffErr = TMath::Sqrt( stdev_ibc[0]*stdev_ibc[0] + stdev_unsi[0]*stdev_unsi[0]);  
       diff.push_back(argDiff);
       diffErr.push_back(argDiffErr);  
       RR.push_back(rr[0]);
@@ -169,6 +190,10 @@ int bcmCalibrate_new(const char *confPath){
       DNE.push_back(stdev_dnew[0]);  
       // clear  
       rr.clear();
+      mean_ibc.clear();
+      stdev_ibc.clear();
+      mean_hac.clear();
+      stdev_hac.clear();
       mean_uns.clear();
       mean_unsi.clear();
       stdev_uns.clear(); 
@@ -189,14 +214,19 @@ int bcmCalibrate_new(const char *confPath){
       RAW_DATA.clear();
       DATA.clear();
       runCuts.clear(); 
+      eRAW_DATA.clear();
+      eDATA.clear();
+      erunCuts.clear(); 
    }
    std::cout << "----------------------------------" << std::endl;
 
-   TGraph *gReqCurrentRun         = graph_df::GetTGraph(RR,reqCurrent);
+   TGraphErrors *gReqCurrentRun   = graph_df::GetTGraphErrors(RR,reqCurrent,reqCurrentErr);
+   TGraphErrors *gHACCurrentRun   = graph_df::GetTGraphErrors(RR,hacCurrent,hacCurrentErr);
    TGraphErrors *gUnserCurrentRun = graph_df::GetTGraphErrors(RR,UI,UIE);
    TGraphErrors *gUnserRateRun    = graph_df::GetTGraphErrors(RR,UR,URE);
    TGraphErrors *gUnserDiffRun    = graph_df::GetTGraphErrors(RR,diff,diffErr); 
    graph_df::SetParameters(gReqCurrentRun  ,21,kBlack); 
+   graph_df::SetParameters(gHACCurrentRun  ,22,kViolet); 
    graph_df::SetParameters(gUnserCurrentRun,20,kRed); 
    graph_df::SetParameters(gUnserRateRun   ,20,kRed);
    graph_df::SetParameters(gUnserDiffRun   ,20,kBlue);
@@ -209,12 +239,14 @@ int bcmCalibrate_new(const char *confPath){
    zero->SetLineColor(kBlack); 
 
    TMultiGraph *mgu = new TMultiGraph();
-   mgu->Add(gReqCurrentRun,"p");
-   mgu->Add(gUnserCurrentRun  ,"p");
+   mgu->Add(gReqCurrentRun  ,"p");
+   mgu->Add(gHACCurrentRun  ,"p");
+   mgu->Add(gUnserCurrentRun,"p");
 
    TLegend *L = new TLegend(0.6,0.6,0.8,0.8);
-   L->AddEntry(gReqCurrentRun  ,"EPICS Current","p"); 
-   L->AddEntry(gUnserCurrentRun,"Unser Current"    ,"p"); 
+   L->AddEntry(gReqCurrentRun  ,"IBC1H04CRCUR2"  ,"p"); 
+   L->AddEntry(gHACCurrentRun  ,"hac_bcm_average","p"); 
+   L->AddEntry(gUnserCurrentRun,"Unser Current"  ,"p"); 
 
    TCanvas *c4 = new TCanvas("c4","Unser Data",1200,800); 
    c4->Divide(1,2);
@@ -231,7 +263,7 @@ int bcmCalibrate_new(const char *confPath){
 
    c4->cd(2); 
    gUnserDiffRun->Draw("ap"); 
-   graph_df::SetLabels(gUnserDiffRun,"Difference (EPICS - Unser)","Run Number","Diff (EPICS - Unser) [#muA]"); 
+   graph_df::SetLabels(gUnserDiffRun,"Difference (IBC1H04CRCUR2 - Unser)","Run Number","Diff (EPICS - Unser) [#muA]"); 
    graph_df::SetLabelSizes(gUnserDiffRun,0.05,0.06);  
    gUnserDiffRun->GetXaxis()->SetLimits(runMin,runMax);  
    gUnserDiffRun->GetYaxis()->SetRangeUser(-2,2);  
@@ -336,6 +368,9 @@ int bcmCalibrate_new(const char *confPath){
    calibCoeff_t apt; 
    std::vector<calibCoeff_t> cc; 
 
+   // create the output directory 
+   util_df::MakeDirectory(outdir.c_str());
+
    // write to individual files
    char outpath[200]; 
    for(int i=0;i<N;i++){
@@ -349,7 +384,7 @@ int bcmCalibrate_new(const char *confPath){
       std::cout << Form("%s: offset = %.2lf ± %.2lf Hz, slope = %.2lf ± %.2lf",
                         apt.dev.c_str(),apt.offset,apt.offsetErr,apt.slope,apt.slopeErr) << std::endl; 
       // file name 
-      sprintf(outpath,"./output/test/%s-calib-results.csv",apt.dev.c_str());
+      sprintf(outpath,"%s/%s-calib-results.csv",outdir._str(),apt.dev.c_str());
       cc.push_back(apt);
       bcm_util::WriteToFile_cc(outpath,cc);
       // set up for next device 
