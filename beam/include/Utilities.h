@@ -12,6 +12,7 @@
 #include "codaRun.h"
 
 namespace util_df {
+   std::string GetStringTimeStampFromUTC(unsigned long unix_time); 
    void ListDirectory(const char *path,std::vector<std::string> &list);
    int MakeDirectory(const char *path); 
    int LoadRunList(const char *inpath,const char *rfPrefix,std::vector<codaRun_t> &runList); 

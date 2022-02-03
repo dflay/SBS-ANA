@@ -2,6 +2,17 @@
 //______________________________________________________________________________
 namespace util_df {
    //______________________________________________________________________________
+   std::string GetStringTimeStampFromUTC(unsigned long unix_time){
+      time_t     utime = unix_time;
+      struct tm  ts;
+      char       buf[100];
+      // Format time as "ddd yyyy-mm-dd hh:mm:ss zzz"
+      ts = *localtime(&utime);
+      strftime(buf, sizeof(buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
+      std::string timeStamp = buf;
+      return timeStamp;
+   }
+   //______________________________________________________________________________
    int MakeDirectory(const char *path){
       int rc=0;
       struct stat SB;

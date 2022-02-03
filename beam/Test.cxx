@@ -25,6 +25,7 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/ROOTFileManager.cxx"
 
+int testTimeStamp(); 
 int testROOTFileMetaData();
 int testJSONManager(); 
 int testRDataFrame();
@@ -35,8 +36,47 @@ int Test(){
    int rc=0;
    // rc = testROOTFileMetaData();
    // rc = testJSONManager();
-   rc = testRDataFrame();
+   // rc = testRDataFrame();
    // rc = testROOTFileManager();
+   rc = testTimeStamp(); 
+
+   return 0;
+}
+//______________________________________________________________________________
+int testTimeStamp(){
+
+   std::string prefix   = "/lustre19/expphy/volatile/halla/sbs/flay/GMnAnalysis/rootfiles";
+   std::string fileName = prefix + "/gmn_replayed-beam_13297_stream0_seg0_2.root";
+
+   TFile *myFile = new TFile(fileName.c_str()); 
+
+   TChain *ch = nullptr;
+   ch = new TChain("T");
+   ch->Add(fileName.c_str());
+   int NN = ch->GetEntries();
+
+   if(ch==nullptr){
+      return 1;
+   }
+
+   TTree *aTree = ch->GetTree();
+   if(aTree==nullptr) return 1;
+
+   ULong64_t theTime=0;
+
+   // // get the event branch 
+   // TBranch *br = aTree->GetBranch("Event_Branch");
+   // // get the leaf with the time stamp 
+   // TLeaf *myLeaf = br->GetLeaf("fEvtHdr.fEvtTime"); 
+   // myLeaf->SetAddress(&theTime); // not sure why this complains... 
+   aTree->SetBranchAddress("Event_Branch.fEvtHdr.fEvtTime",&theTime);
+
+   std::string timeStamp="";
+   for(int i=0;i<100;i++){
+      aTree->GetEntry(i);
+      timeStamp = util_df::GetStringTimeStampFromUTC(theTime);
+      std::cout << Form("event %05d, time = %llu (%s)",i,theTime,timeStamp.c_str()) << std::endl; 
+   }
 
    return 0;
 }
@@ -122,7 +162,7 @@ int testROOTFileManager(){
    // TSsbs,sbs.bcm.unser.rate,D (D = Double_t, see TTree class def for details) 
    std::string structurePath = "./input/format/beam.csv";   
 
-   util::ROOTFileManager *rfMgr = new util::ROOTFileManager();
+   util_df::ROOTFileManager *rfMgr = new util::ROOTFileManager();
    rfMgr->LoadFile(fileName.c_str(),structurePath.c_str());
    rfMgr->Print(); 
  
