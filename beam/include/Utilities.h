@@ -12,6 +12,7 @@
 #include "codaRun.h"
 
 namespace util_df {
+   unsigned long int GetUTCTimeStampFromString(std::string timeStamp,bool isDST); 
    std::string GetStringTimeStampFromUTC(unsigned long unix_time); 
    void ListDirectory(const char *path,std::vector<std::string> &list);
    int MakeDirectory(const char *path); 

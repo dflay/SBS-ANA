@@ -1,18 +1,20 @@
 #include "../include/BCMManager.h"
 //______________________________________________________________________________
 BCMManager::BCMManager(const char *filePath,const char *ccDirPath,bool isDebug){
-   fIsDebug          = isDebug; 
-   fCalculateCurrent = false; 
-   fVerbosity        = 0;  
-   fEvtCntrLeft      = 0;  
-   fEvtCntrSBS       = 0;  
-   fEvtCntrEPICS     = 0; 
-   fLastTimeLeft     = 0; 
-   fLastTimeSBS      = 0;
-   fLastRun          = 0; 
+   fIsDebug            = isDebug; 
+   fCalculateCurrent   = false; 
+   fVerbosity          = 0;  
+   fEvtCntrLeft        = 0;  
+   fEvtCntrSBS         = 0;  
+   fEvtCntrEPICS       = 0; 
+   fLastTimeLeft       = 0; 
+   fLastTimeSBS        = 0;
+   fLastRun            = 0; 
    fLastRunEvtCntLeft  = 0; 
    fLastRunEvtCntSBS   = 0; 
-   fLastRunEvtCntEPICS = 0; 
+   fLastRunEvtCntEPICS = 0;
+   fTimeStamp          = "NONE"; 
+   fUTCTimeStamp       = 0;  
 
    std::string path = filePath; 
    if(path.compare("NONE")!=0){
@@ -39,7 +41,8 @@ void BCMManager::Clear(){
    fEvtCntrSBS   = 0;
    fEvtCntrEPICS = 0;
    fLastTimeLeft = 0; 
-   fLastTimeSBS  = 0; 
+   fLastTimeSBS  = 0;
+   fTimeStamp    = "NONE";  
 }
 //______________________________________________________________________________
 int BCMManager::LoadFile(const char *filePath,int runNumber){
@@ -50,6 +53,7 @@ int BCMManager::LoadFile(const char *filePath,int runNumber){
       std::cout << "[BCMManager::LoadFile]: Cannot open the file for run " << runNumber << std::endl;
       return rc;
    }
+
    // file is valid, read in the data from the trees 
    int rc_lhrs  = LoadDataFromTree(filePath,"TSLeft",runNumber);
    int rc_sbs   = LoadDataFromTree(filePath,"TSsbs" ,runNumber);
@@ -61,7 +65,7 @@ int BCMManager::LoadFile(const char *filePath,int runNumber){
    int notFound=0;
    int NR=fRunList.size(); 
    if(rc_sbs==0){
-      std::cout << "[BCMManager::LoadFile]: Loaded run " << runNumber << std::endl;
+      std::cout << Form("[BCMManager::LoadFile]: Loaded run %d, recorded on %s (%lu)",runNumber,fTimeStamp.c_str(),fUTCTimeStamp) << std::endl;
       for(int i=0;i<NR;i++){
 	 if(runNumber!=fRunList[i]) notFound += 1;
       }
@@ -73,16 +77,63 @@ int BCMManager::LoadFile(const char *filePath,int runNumber){
    return rc; 
 }
 //______________________________________________________________________________
+int BCMManager::GetTimeStamp(TFile *f,std::string &timeStamp,unsigned long &utc){
+
+   // get date and time of run
+   std::string dayStr="";  
+   THaRun* run      = (THaRun*)f->Get("Run_Data");
+   TDatime run_date = run->GetDate();
+   int dayOfWeek = run_date.GetDayOfWeek();
+   int month     = run_date.GetMonth(); 
+   int day       = run_date.GetDay();
+   int year      = run_date.GetYear();
+   int hour      = run_date.GetHour();
+   int min       = run_date.GetMinute();
+   int sec       = run_date.GetSecond();
+   if(dayOfWeek==1) dayStr = "Mon"; 
+   if(dayOfWeek==2) dayStr = "Tue"; 
+   if(dayOfWeek==3) dayStr = "Wed"; 
+   if(dayOfWeek==4) dayStr = "Thu"; 
+   if(dayOfWeek==5) dayStr = "Fri"; 
+   if(dayOfWeek==6) dayStr = "Sat"; 
+   if(dayOfWeek==7) dayStr = "Sun";
+
+   char timeStr[200];
+   sprintf(timeStr,"%s %d-%02d-%02d %02d:%02d:%02d",dayStr.c_str(),year,month,day,hour,min,sec);
+   timeStamp = timeStr;
+
+   // now compute the UTC time stamp 
+   struct tm timeinfo = {0};
+   timeinfo.tm_year = year-1900;  // years since 1900 
+   timeinfo.tm_mon  = month-1;     // months since january (0--11)  
+   timeinfo.tm_mday = day;
+   timeinfo.tm_hour = hour;
+   timeinfo.tm_min  = min;
+   timeinfo.tm_sec  = sec;
+   int corr = 0;
+   // FIXME: there's got to be a better way to do this... 
+   int isDST = timeinfo.tm_isdst; 
+   if(isDST) corr = 3600; // daylight savings time, subtract 1 hour  
+   time_t timeSinceEpoch = mktime(&timeinfo) - corr;
+   utc = (unsigned long)timeSinceEpoch; 
+
+   return 0;
+}
+//______________________________________________________________________________
 int BCMManager::CheckFile(const char *filePath){
    TFile *myFile = new TFile(filePath);
 
    Long64_t bytesRead = myFile->GetBytesRead();
 
-   int rc=1; 
+   int rc=1;
+ 
    if(bytesRead!=0){
       // file has non-zero size
       rc = 0;
-   } 
+      // get the time stamp of the run 
+      GetTimeStamp(myFile,fTimeStamp,fUTCTimeStamp);
+   }
+ 
    return rc;
 }
 //______________________________________________________________________________
@@ -148,12 +199,12 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
    for(int i=0;i<NN;i++){
       aTree->GetEntry(i);
       if(time_den!=0){
-	 time = time_num/time_den; 
+	 time = (double)fUTCTimeStamp + time_num/time_den; 
       }else{
 	 time = 0;  
       } 
       if(time103kHz_den!=0){
-	 time103kHz = time103kHz_num/time103kHz_den;
+	 time103kHz = (double)fUTCTimeStamp + time103kHz_num/time103kHz_den;
       }else{
 	 time103kHz = 0;
       }

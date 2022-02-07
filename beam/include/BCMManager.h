@@ -17,6 +17,9 @@
 #include "TH2F.h"
 #include "TGraph.h"
 #include "TGraphErrors.h"
+#include "TDatime.h"
+
+#include "THaRun.h"
 
 #include "scalerData.h"
 #include "epicsData.h"
@@ -29,7 +32,10 @@ class BCMManager {
       int fVerbosity;  
       int fLastRun,fLastRunEvtCntLeft,fLastRunEvtCntSBS,fLastRunEvtCntEPICS;
       int fEvtCntrLeft,fEvtCntrSBS,fEvtCntrEPICS;
-      double fLastTimeLeft,fLastTimeSBS; 
+      double fLastTimeLeft,fLastTimeSBS;
+
+      unsigned long fUTCTimeStamp; 
+      std::string fTimeStamp; 
 
       // calibration coefficients to convert rate to current [uA]
       // old style: unser, upstream and downstream BCMs in one vector 
@@ -62,6 +68,7 @@ class BCMManager {
       void Print(const char *arm);
       void Clear(); 
 
+      int GetTimeStamp(TFile *f,std::string &timeStamp,unsigned long &utc); 
       int LoadFile(const char *filePath,int runNumber=0);
       int LoadDataFromTree(const char *filePath,const char *treeName,int runNumber=0);
       int LoadEPICSDataFromTree(const char *filePath,int runNumber=0);

@@ -9,6 +9,7 @@
 #include "TStyle.h"
 #include "TLine.h"
 
+#include "./include/bcm.h"
 #include "./include/codaRun.h"
 #include "./src/CSVManager.cxx"
 #include "./src/BCMManager.cxx"
@@ -29,7 +30,9 @@ int GetCharge(std::vector<std::string> var,BCMManager *mgr,
               std::vector<double> &run,std::vector<std::vector<double>> &mean,std::vector<std::vector<double>> &stdev); 
 
 int GetCharge(std::string var,std::vector<scalerData_t> allData,std::vector<double> run,
-              std::vector<double> &Q,std::vector<double> &dQ); 
+              std::vector<double> &Q,std::vector<double> &dQ,std::vector<double> &Time,std::vector<double> &dTime); 
+
+double getChargeError(double Q,double I, double dI,double t,double dt); 
 
 int bcmCheckRun(const char *confPath){
 
@@ -130,15 +133,19 @@ int bcmCheckRun(const char *confPath){
    // for(int i=0;i<N;i++) VAR.push_back(varC[i].Data()); 
    // GetCharge(VAR,mgr,RR,MM,SS);
 
-   std::vector<double> run,mean,stdev,q,dq;
+   std::vector<double> run,mean,stdev,q,dq,t,dt;
    std::vector<std::vector<double>> mm,ss,Q,dQ;     // no cuts
    std::vector<std::vector<double>> mmc,ssc,Qc,dQc; // with cuts 
+   std::vector<std::vector<double>> mtc,stc;        // time of run 
+
+   bcm_t dataPt; 
+   std::vector<bcm_t> bcmData; 
 
    // get run stats for all variables
    int M=0;
    for(int i=0;i<N;i++){
       bcm_util::GetStats_byRun(varC[i].Data(),data,run,mean,stdev);
-      GetCharge(varC[i].Data(),data,run,q,dq); 
+      GetCharge(varC[i].Data(),data,run,q,dq,t,dt); 
       // store results
       mm.push_back(mean); 
       ss.push_back(stdev);
@@ -150,19 +157,31 @@ int bcmCheckRun(const char *confPath){
       stdev.clear();
       q.clear();
       dq.clear();
+      t.clear();
+      dt.clear();
       bcm_util::GetStats_byRun(varC[i].Data(),DATA,run,mean,stdev);
-      GetCharge(varC[i].Data(),DATA,run,q,dq); 
+      GetCharge(varC[i].Data(),DATA,run,q,dq,t,dt); 
       // store results
       mmc.push_back(mean); 
       ssc.push_back(stdev); 
       Qc.push_back(q);  
-      dQc.push_back(dq);  
+      dQc.push_back(dq);
+      mtc.push_back(t); 
+      stc.push_back(dt); 
+      // dataPt.dev        = varC[i].Data();
+      // dataPt.current    = mean; 
+      // dataPt.currentErr = stdev; 
+      // dataPt.charge     = q; 
+      // dataPt.chargeErr  = dq; 
+      // bcmData.push_back(dataPt);  
       // set up for next variable 
       run.clear();
       mean.clear();
       stdev.clear();
       q.clear();
       dq.clear();
+      t.clear();
+      dt.clear();
    } 
 
    // print results to screen
@@ -170,13 +189,44 @@ int bcmCheckRun(const char *confPath){
       std::cout << Form("%s: ",varC[i].Data()) << std::endl;
       M = mm[i].size(); // run dimension 
       for(int j=0;j<M;j++){
-	 std::cout << Form("   run %d: no cuts I = = %.3lf ± %.3lf, Q = %.5lf C, with cuts I = %.3lf ± %.3lf, Q = %.5lf C",
+         std::cout << Form("   run %d: no cuts I = = %.3lf ± %.3lf, Q = %.5lf C, with cuts I = %.3lf ± %.3lf, Q = %.5lf C",
                            rr[j],mm[i][j],ss[i][j],Q[i][j],mmc[i][j],ssc[i][j],Qc[i][j]) << std::endl;
       }
    } 
+  
+   char msg[200]; 
+ 
+   // print results to screen
+   // beam current 
+   M = mm[0].size(); 
+   for(int i=0;i<M;i++){  // run dimension
+      std::cout << "run " << rr[i] << ","; 
+      for(int j=0;j<N;j++){ // BCM variable dimension
+         if(j==0){
+	    sprintf(msg,"%.3lf,%.3lf",mmc[j][i],ssc[j][i]); 
+         }else{
+	    sprintf(msg,"%s,%.3lf,%.3lf",msg,mmc[j][i],ssc[j][i]); 
+         } 
+      }
+      std::cout << msg << std::endl;
+   }
+
+   // beam charge
+   for(int i=0;i<M;i++){  // run dimension
+      std::cout << "run " << rr[i] << ","; 
+      for(int j=0;j<N;j++){ // BCM variable dimension
+         dQc[j][i] = getChargeError(Qc[j][i],mmc[j][i],ssc[j][i],mtc[j][i],stc[j][i]);
+         if(j==0){
+	    sprintf(msg,"%.5lf,%.5lf",Qc[j][i],dQc[j][i]); 
+         }else{
+	    sprintf(msg,"%s,%.5lf,%.5lf",msg,Qc[j][i],dQc[j][i]); 
+         } 
+      }
+      std::cout << msg << std::endl;
+   }
 
    // get BCM plots vs event number
-   std::string xVar = "runEvent"; // "time"; 
+   std::string xVar = "time"; 
    TLegend *L = new TLegend(0.6,0.6,0.8,0.8); 
    int color[N] = {kBlack,kRed,kBlue,kGreen+2,kMagenta,kCyan+2,kOrange}; 
    TMultiGraph **mg  = new TMultiGraph*[N]; 
@@ -199,8 +249,8 @@ int bcmCheckRun(const char *confPath){
    }
 
    TString Title,yAxisTitle;
-   TString xAxisTitle = Form("Run Event Number");
-   // TString xAxisTitle = Form("Time [sec]");
+   // TString xAxisTitle = Form("Run Event Number");
+   TString xAxisTitle = Form("Time");
 
    TString canvasTitle = GetTitle(rr); 
   
@@ -216,6 +266,7 @@ int bcmCheckRun(const char *confPath){
       yAxisTitle = Form("%s [Hz]",var[i].Data());
       mg[i]->Draw("alp");
       graph_df::SetLabels(mg[i],Title,xAxisTitle,yAxisTitle);
+      graph_df::UseTimeDisplay(mg[i]); 
       mg[i]->Draw("alp");
       c1a->Update();
       // next canvas 
@@ -224,6 +275,7 @@ int bcmCheckRun(const char *confPath){
       yAxisTitle = Form("%s [Hz]",var[i+3].Data());
       mg[i+3]->Draw("alp");
       graph_df::SetLabels(mg[i+3],Title,xAxisTitle,yAxisTitle);
+      graph_df::UseTimeDisplay(mg[i+3]); 
       mg[i+3]->Draw("alp");
       c1b->Update();
    }
@@ -234,6 +286,7 @@ int bcmCheckRun(const char *confPath){
    c1b->cd(4);
    mg[6]->Draw("alp");
    graph_df::SetLabels(mg[6],Title,xAxisTitle,yAxisTitle);
+   graph_df::UseTimeDisplay(mg[6]); 
    mg[6]->Draw("alp");
    c1b->Update();
 
@@ -288,6 +341,7 @@ int bcmCheckRun(const char *confPath){
    mgc->Draw("a"); 
    graph_df::SetLabels(mgc,Title,xAxisTitle,"Beam Current [#muA]");
    graph_df::SetLabelSizes(mgc,0.05,0.06);  
+   graph_df::UseTimeDisplay(mgc);  
    mgc->Draw("a");
    L->Draw("same"); 
    c3->Update(); 
@@ -295,7 +349,8 @@ int bcmCheckRun(const char *confPath){
    c3->cd(2);
    mge->Draw("a");
    graph_df::SetLabels(mge,"EPICS Current",xAxisTitle,"Beam Current [#muA]"); 
-   graph_df::SetLabelSizes(mge,0.05,0.06);  
+   graph_df::SetLabelSizes(mge,0.05,0.06); 
+   // graph_df::UseTimeDisplay(mge);  
    mge->Draw("a");
    Le->Draw("same"); 
    c3->Update();
@@ -304,6 +359,14 @@ int bcmCheckRun(const char *confPath){
    delete jmgr; 
 
    return 0;
+}
+//______________________________________________________________________________
+double getChargeError(double Q,double I, double dI,double t,double dt){
+   double T1=0,T2=0;
+   if(I!=0) T1 = TMath::Power(dI/I,2.); 
+   if(t!=0) T2 = TMath::Power(dt/t,2.); 
+   double dQ = Q*TMath::Sqrt( T1 + T2 );
+   return dQ; 
 }
 //______________________________________________________________________________
 TString GetTitle(std::vector<int> run){
@@ -338,7 +401,7 @@ int GetStats(std::vector<std::string> var,std::vector<scalerData_t> data,
 }
 //______________________________________________________________________________
 int GetCharge(std::string var,std::vector<scalerData_t> allData,std::vector<double> run,
-              std::vector<double> &Q,std::vector<double> &dQ){
+              std::vector<double> &Q,std::vector<double> &dQ,std::vector<double> &Time,std::vector<double> &dTime){
    // get the charge associated with the run
 
    int M=0;
@@ -378,7 +441,9 @@ int GetCharge(std::string var,std::vector<scalerData_t> allData,std::vector<doub
                            var.c_str(),deltaTime,deltaTime/60.,chargeSum,chargeSum103) << std::endl;
       // fill output
       Q.push_back(chargeSum);  
-      dQ.push_back(0); 
+      dQ.push_back(0);
+      Time.push_back(deltaTime); 
+      dTime.push_back(0); 
       // clear for next run 
       runData.clear();
       chargeSum=0;

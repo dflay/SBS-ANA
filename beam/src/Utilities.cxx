@@ -2,6 +2,29 @@
 //______________________________________________________________________________
 namespace util_df {
    //______________________________________________________________________________
+   unsigned long int GetUTCTimeStampFromString(std::string timeStamp,bool isDST){
+      // takes a time stamp string and converts to UTC integer
+      // returns the UTC time in SECONDS
+      // note the format of the timestamp (ddd yyyy-mm-dd hh:mm::ss zzz)  
+      char dayOfWeek[5],timeZone[5];
+      int yy,mm,dd,hour,min,sec;
+      std::sscanf(timeStamp.c_str(),"%s %04d-%02d-%02d %02d:%02d:%02d %s",
+	    dayOfWeek,&yy,&mm,&dd,&hour,&min,&sec,timeZone);
+      struct tm timeinfo = {0};
+      timeinfo.tm_year = yy-1900;  // years since 1900 
+      timeinfo.tm_mon  = mm-1;     // months since january (0--11)  
+      timeinfo.tm_mday = dd;
+      timeinfo.tm_hour = hour;
+      timeinfo.tm_min  = min;
+      timeinfo.tm_sec  = sec;
+      int corr = 0;
+      // FIXME: there's got to be a better way to do this... 
+      // int isDST = timeinfo.tm_isdst; 
+      if(isDST) corr = 3600; // daylight savings time, subtract 1 hour  
+      time_t timeSinceEpoch = mktime(&timeinfo) - corr;
+      return timeSinceEpoch;
+   }
+   //______________________________________________________________________________
    std::string GetStringTimeStampFromUTC(unsigned long unix_time){
       time_t     utime = unix_time;
       struct tm  ts;
