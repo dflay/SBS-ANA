@@ -10,50 +10,48 @@
 #include "TPad.h"
 #include "TLine.h"
 
-#include "./include/cut.h"
+#include "./include/bcm.h"
+#include "./include/codaRun.h"
+#include "./src/CSVManager.cxx"
+#include "./src/BCMManager.cxx"
+#include "./src/Utilities.cxx"
+#include "./src/JSONManager.cxx"
 #include "./src/Graph.cxx"
 #include "./src/bcmUtilities.cxx"
+#include "./src/cutUtilities.cxx"
 
-int bcmCheckCuts(){
+int bcmCheckCuts(const char *confPath){
 
-   // settings 
-   bool logScale   = false;
-   
-   gStyle->SetOptStat(0);
- 
    int rc=0;
 
-   TString prefix; 
-   std::vector<int> runList;
-   rc = bcm_util::LoadRuns("./input/run-list.csv",prefix,runList);
-   if(rc!=0) return 1; 
-   
-   BCMManager *mgr = new BCMManager();
-   // mgr->SetDebug();
-   // mgr->EnableEPICS(); 
+   // read input configuration file 
+   JSONManager *jmgr = new JSONManager(confPath);
+   std::string prefix   = jmgr->GetValueFromKey_str("ROOTfile-path");
+   std::string run_path = jmgr->GetValueFromKey_str("run-path");
+   std::string cut_path = jmgr->GetValueFromKey_str("cut-path");
+   std::string out_path = jmgr->GetValueFromKey_str("out-path");
+   std::string bcmCalibPath = jmgr->GetValueFromKey_str("bcm-cc-path");
+   delete jmgr;
 
-   TString filePath;  
-   int startSegment = 0; 
-   int endSegment   = 0; 
-   const int NR = runList.size();  
-   for(int i=0;i<NR;i++){ 
-      filePath = Form("%s/gmn_replayed-beam_%d_stream0_seg%d_%d.root",prefix.Data(),runList[i],startSegment,endSegment);
-      mgr->LoadFile(filePath);
-   } 
+   BCMManager *mgr = new BCMManager("NONE",bcmCalibPath.c_str(),false);
 
-   std::vector<cut_t> cutList; 
-   rc = bcm_util::LoadCuts("./input/cut-list.csv",cutList); 
-   if(rc!=0) return 1; 
+   std::vector<codaRun_t> runList;
+   rc = util_df::LoadRunList(run_path.c_str(),prefix.c_str(),runList);
+   if(rc!=0) return 1;
+
+   util_df::LoadBCMData(runList,mgr);
+   if(rc!=0) return 1;
+
+   std::vector<cut_t> cutList;
+   rc = bcm_util::LoadCuts(cut_path.c_str(),cutList);
+   if(rc!=0) return 1;
 
    const int N = 7; 
-   TString varName[N] = {"u1.rate","unew.rate","unser.rate","dnew.rate","d1.rate","d3.rate","d10.rate"};
+   TString varName[N] = {"unser.rate","u1.rate","unew.rate","dnew.rate","d1.rate","d3.rate","d10.rate"};
 
-   int NBin = 100;
-   // histo bounds        u1  unew unser  dnew  d1     d3  d10
-   double loBeamOff[N] = {50  ,0  ,700E+3,0    ,1E+3  ,0  ,0  };
-   double hiBeamOff[N] = {150,100 ,850E+3,20E+3,1.5E+3,100,100};
+   TString xAxis = "runEvent"; 
 
-   TString theVar; 
+   TString theVar,theCutVar; 
    double mean=0,stdev=0;
    std::vector<double> time,v; 
 
@@ -61,92 +59,73 @@ int bcmCheckCuts(){
    TLine **lo = new TLine*[NC]; 
    TLine **hi = new TLine*[NC]; 
 
+   int color=0;
+  
    // let's do cuts on each variable defined 
    for(int i=0;i<NC;i++){
-      // define variable and get a vector of all data  
+      // define variable and get a vector of all data 
+      theCutVar = Form("%s",cutList[i].cut_var.c_str());
       if(cutList[i].arm.compare("E")==0){
 	 // EPICS variable 
 	 theVar = Form("%s",cutList[i].dev.c_str());
       }else{
-	 theVar = Form("%s.bcm.%s.rate",cutList[i].arm.c_str(),cutList[i].dev.c_str());
+	 theVar = Form("%s.rate",cutList[i].dev.c_str());
       }
-      mgr->GetVector(cutList[i].arm.c_str(),"time",time); 
-      mgr->GetVector(cutList[i].arm.c_str(),theVar.Data(),v); 
+      mgr->GetVector(cutList[i].arm.c_str(),theCutVar.Data(),time); 
+      mgr->GetVector(cutList[i].arm.c_str(),theVar.Data()   ,v); 
       bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
       std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
                         cutList[i].low,cutList[i].high,cutList[i].group,theVar.Data(),mean,stdev) << std::endl; 
-      // make lines we can plot 
-      lo[i] = new TLine(cutList[i].low ,mean-5*stdev,cutList[i].low ,mean+5*stdev);
-      lo[i]->SetLineColor(kRed); 
-      hi[i] = new TLine(cutList[i].high,mean-5*stdev,cutList[i].high,mean+5*stdev);
-      hi[i]->SetLineColor(kRed);
+      // make lines we can plot
+      color = kRed;
+      if(i%2==0) color = kGreen+2; 
+      lo[i] = new TLine(cutList[i].low ,0,cutList[i].low ,900E+3);
+      lo[i]->SetLineColor(color); 
+      hi[i] = new TLine(cutList[i].high,0,cutList[i].high,900E+3);
+      hi[i]->SetLineColor(color);
       // set up for next cut 
       v.clear();
       time.clear();
    }
  
    // create histos and TGraphs 
-
-   TGraph **g = new TGraph*[N]; 
+   TGraph **g = new TGraph*[N];
+   TCanvas **c = new TCanvas*[N]; 
 
    for(int i=0;i<N;i++){
-      g[i] = mgr->GetTGraph("sbs","time",varName[i]);
+      g[i] = mgr->GetTGraph("sbs",xAxis,varName[i]);
       graph_df::SetParameters(g[i],20,kBlack); 
+   }
+
+   TString cName,cTitle;
+
+   for(int i=0;i<N;i++){
+      cName  = Form("c%d",i);
+      cTitle = Form("%s",varName[i].Data());
+      c[i]   = new TCanvas(cName,cTitle,1200,800);
+      c[i]->cd();
+      g[i]->Draw("ap");
+      graph_df::SetLabels(g[i],varName[i].Data(),xAxis.Data(),varName[i].Data());
+      g[i]->Draw("ap");
+      for(int j=0;j<NC;j++){
+	 lo[j]->Draw("same"); 
+	 hi[j]->Draw("same"); 
+      }
+      c[i]->Update();
    }
 
    TGraph *gEPICSCurrent = mgr->GetTGraph("E","time","IBC1H04CRCUR2"); 
    gEPICSCurrent->SetMarkerStyle(20);
 
-   TCanvas *c1a = new TCanvas("c1a","BCM Check",1200,800);
-   c1a->Divide(2,2);
-
-   TCanvas *c1b = new TCanvas("c1b","BCM Check",1200,800);
-   c1b->Divide(2,2);
-
-   TString Title,yAxisTitle;
-
-   for(int i=0;i<N/2;i++){
-      c1a->cd(i+1);
-      g[i]->Draw();
-      Title      = Form("%s"     ,varName[i].Data());
-      yAxisTitle = Form("%s [Hz]",varName[i].Data());
-      graph_df::SetLabels(g[i+3],Title,"Time [sec]",yAxisTitle); 
-      g[i]->Draw();
-      lo[i]->Draw("same"); 
-      hi[i]->Draw("same");
-      c1a->Update();
-      c1b->cd(i+1);
-      g[i+3]->Draw();
-      Title      = Form("%s"     ,varName[i+3].Data());
-      yAxisTitle = Form("%s [Hz]",varName[i+3].Data());
-      graph_df::SetLabels(g[i+3],Title,"Time [sec]",yAxisTitle); 
-      g[i+3]->Draw();
-      lo[i+3]->Draw("same"); 
-      hi[i+3]->Draw("same");
-      c1b->Update();
-   }
-
-   // last one 
-   c1b->cd(4); 
-   g[6]->Draw();
-   Title      = Form("%s"     ,varName[6].Data());
-   yAxisTitle = Form("%s [Hz]",varName[6].Data());
-   graph_df::SetLabels(g[6],Title,"Time [sec]",yAxisTitle); 
-   g[6]->Draw();
-   lo[6]->Draw("same"); 
-   hi[6]->Draw("same");
-   c1b->Update();
-
    // EPICS plots
 
-   TCanvas *c3 = new TCanvas("c3","EPICS Beam Current",1200,800); 
+   TCanvas *ce = new TCanvas("ce","EPICS Beam Current",1200,800); 
 
-   c3->cd();
-   gEPICSCurrent->Draw("alp");
+   ce->cd();
+   gEPICSCurrent->Draw("ap");
    graph_df::SetLabels(gEPICSCurrent,"","Time [sec]","IBC1H04CRCUR2 [#muA]"); 
-   lo[7]->Draw("same"); 
-   hi[7]->Draw("same");
-   c3->Update();  
+   gEPICSCurrent->Draw("ap");
+   ce->Update();  
 
    return 0;
 }

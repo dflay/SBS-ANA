@@ -6,7 +6,7 @@
 #include <cstdlib>
 #include <iostream>
 
-namespace util { 
+namespace util_df { 
 
    template <typename T>
       class Event {

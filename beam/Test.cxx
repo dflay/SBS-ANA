@@ -35,10 +35,10 @@ int Test(){
 
    int rc=0;
    // rc = testROOTFileMetaData();
-   // rc = testJSONManager();
+   rc = testJSONManager();
    // rc = testRDataFrame();
    // rc = testROOTFileManager();
-   rc = testTimeStamp(); 
+   // rc = testTimeStamp(); 
 
    return 0;
 }
@@ -162,7 +162,7 @@ int testROOTFileManager(){
    // TSsbs,sbs.bcm.unser.rate,D (D = Double_t, see TTree class def for details) 
    std::string structurePath = "./input/format/beam.csv";   
 
-   util_df::ROOTFileManager *rfMgr = new util::ROOTFileManager();
+   util_df::ROOTFileManager *rfMgr = new util_df::ROOTFileManager();
    rfMgr->LoadFile(fileName.c_str(),structurePath.c_str());
    rfMgr->Print(); 
  

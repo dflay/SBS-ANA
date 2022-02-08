@@ -22,7 +22,7 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
 
-int bcmProcessCuts(const char *confPath){
+int bcmCalibProcessCuts(const char *confPath){
  
    int rc=0;
 
@@ -70,7 +70,7 @@ int bcmProcessCuts(const char *confPath){
 	 // EPICS variable 
 	 theVar = Form("%s",cutList[i].dev.c_str());
       }else{
-	 theVar    = Form("%s.rate",cutList[i].dev.c_str());
+	 theVar = Form("%s.rate",cutList[i].dev.c_str());
       }
       mgr->GetVector(cutList[i].arm.c_str(),theCutVar.Data(),time);
       mgr->GetVector(cutList[i].arm.c_str(),theVar.Data(),v);

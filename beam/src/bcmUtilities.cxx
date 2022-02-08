@@ -424,9 +424,10 @@ namespace bcm_util {
 	 return 1;
       }
 
-      std::vector<std::string> arm,dev,beam_state;
+      std::vector<std::string> arm,dev,beam_state,cut_var;
       csv->GetColumn_byName_str("arm"       ,arm);
       csv->GetColumn_byName_str("dev"       ,dev);
+      csv->GetColumn_byName_str("cut_var"   ,cut_var);
       csv->GetColumn_byName_str("beam_state",beam_state);
 
       std::vector<double> low,high;
@@ -441,6 +442,7 @@ namespace bcm_util {
       for(int i=0;i<N;i++){
          aCut.arm        = arm[i];
 	 aCut.dev        = dev[i];
+	 aCut.cut_var    = cut_var[i];
 	 aCut.beam_state = beam_state[i];
 	 aCut.low        = low[i];
 	 aCut.high       = high[i];

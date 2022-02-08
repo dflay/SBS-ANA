@@ -1,5 +1,51 @@
 #include "../include/cutUtilities.h"
 namespace cut_util {
+   // //______________________________________________________________________________
+   // int LoadCuts_bcmCalib_json(const char *inpath,std::vector<std::string> key,std::vector< std::vector<cut_t> > &data){
+   //    // load cuts into a JSON object first, then populate the vector of type cut_t
+   //    // generally, this is a vector of cuts on a single x variable (cut-var), for a given 
+   //    // y variable (dev).  The key "num-cuts" defines the number of cut pairs (min,max) 
+   //    // to apply to the data   
+   //    // taylored to BCM calibration analysis. Might have a lot of keys (for many beam currents)  
+   //    JSONManager *jmgr = new JSONManager();
+   //    int rc = jmgr->ReadFile(inpath);
+   //    if(rc!=0){
+   //       delete jmgr;
+   //       return 1;
+   //    } 
+
+   //    std::string dev     = jmgr->GetValueFromKey_str("dev");
+   //    std::string cut_var = jmgr->GetValueFromKey_str("cut-var");
+   //   
+   //    int NC = jmgr->GetValueFromKey<int>("ncycles"); 
+
+   //    cut_t aCut;
+   //    int NK = key.size();
+   //    std::vector<double> min,max; 
+   //    std::vector<cut_t> cut; 
+   //    for(int i=0;i<NK;i++){ 
+   //       // this is for the ith beam current 
+   //       // beam off 
+   //       jmgr->GetVectorFromSubKey<double>(key[i],"min-off",NC,min);  
+   //       jmgr->GetVectorFromSubKey<double>(key[i],"max-off",NC,max); 
+   //       // each beam current has a set of beam-on and and beam-off cuts 
+   //       for(int j=0;j<NC;j++){
+   //          aCut.dev     = dev; 
+   //          aCut.cut_var = cut_var;
+   //          aCut.low     = min[j];  
+   //          aCut.high    = max[j]; 
+   //          cut.push_back(aCut);  
+   //       }
+   //       data.push_back(cut); 
+   //       // set up for next beam current 
+   //       min.clear();
+   //       max.clear();
+   //       cut.clear();
+   //    } 
+
+   //    delete jmgr;  
+   //    return 0;
+   // }
    //______________________________________________________________________________
    int LoadCuts_json(const char *inpath,std::vector<cut_t> &data){
       // load cuts into a JSON object first, then populate the vector of type cut_t
