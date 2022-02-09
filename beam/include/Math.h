@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <vector>
-#include <math.h>
+// #include <math.h>
 #include <cmath>
 #include <algorithm>
 

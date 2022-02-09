@@ -203,6 +203,22 @@ namespace cut_util {
       return pass; 
    }
    //______________________________________________________________________________
+   int ApplyCut(cut_t aCut,std::vector<scalerData_t> in,std::vector<scalerData_t> &out){
+      // apply a single cut to data 
+      // // input: 
+      // - aCut: a cut with a min and max range. Must define the variable cut_var in cut struct 
+      // - in: input scaler data 
+      // output: 
+      // - out: scaler data that passed the cuts   
+      const int NEV = in.size();
+      bool passCut=false;
+      for(int i=0;i<NEV;i++){
+	 passCut = PassCut_alt(aCut,in[i]);
+	 if(passCut) out.push_back(in[i]); 
+      }
+      return 0;
+   }
+   //______________________________________________________________________________
    int ApplyCuts_alt(std::vector<cut_t> cutList,std::vector<scalerData_t> in,std::vector<scalerData_t> &out){
       // apply cuts event by event according to a list of cuts
       // use for ONE BCM variable as a function of event number (or other good x axis)
@@ -368,6 +384,25 @@ namespace cut_util {
       }
       mean  = math_df::GetMean<double>(Y);
       stdev = math_df::GetStandardDeviation<double>(Y);
+      return 0;
+   }
+   //______________________________________________________________________________
+   int GetStatsWithCuts(double cutLo,double cutHi,
+                        std::vector<double> x,std::vector<double> y1,std::vector<double> y2,
+	                double &mean1,double &stdev1,double &mean2,double &stdev2){
+      // cuts are applied to the x variable. if true, compute stats on y1 and y2 
+      std::vector<double> Y1,Y2;
+      const int N = x.size();
+      for(int i=0;i<N;i++){
+	 if(x[i]>cutLo&&x[i]<cutHi){
+	    Y1.push_back(y1[i]);
+	    Y2.push_back(y2[i]);
+         }
+      }
+      mean1  = math_df::GetMean<double>(Y1);
+      stdev1 = math_df::GetStandardDeviation<double>(Y1);
+      mean2  = math_df::GetMean<double>(Y2);
+      stdev2 = math_df::GetStandardDeviation<double>(Y2);
       return 0;
    }
 }

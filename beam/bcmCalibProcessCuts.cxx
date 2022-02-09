@@ -22,7 +22,9 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
 
-int bcmCalibProcessCuts(const char *confPath){
+int GetStats(std::string var,std::vector<scalerData_t> data,std::vector<double> &out); 
+
+int bcmCalibProcessCuts(const char *confPath,const char *bcmName){
  
    int rc=0;
 
@@ -31,9 +33,15 @@ int bcmCalibProcessCuts(const char *confPath){
    std::string prefix   = jmgr->GetValueFromKey_str("ROOTfile-path");
    std::string run_path = jmgr->GetValueFromKey_str("run-path");
    std::string cut_path = jmgr->GetValueFromKey_str("cut-path");
-   std::string out_path = jmgr->GetValueFromKey_str("out-path");
+   std::string out_dir  = jmgr->GetValueFromKey_str("out-dir");
    std::string bcmCalibPath = jmgr->GetValueFromKey_str("bcm-cc-path");
+   // std::string devName  = jmgr->GetValueFromKey_str("dev"); 
    delete jmgr; 
+
+   std::string devName = bcmName; 
+ 
+   std::cout << "=================================================" << std::endl;
+   std::cout << "Processing cuts for variable: " << devName << std::endl; 
 
    BCMManager *mgr = new BCMManager("NONE",bcmCalibPath.c_str(),false);
 
@@ -48,54 +56,55 @@ int bcmCalibProcessCuts(const char *confPath){
    rc = bcm_util::LoadCuts(cut_path.c_str(),cutList); 
    if(rc!=0) return 1; 
    
-   TString theVar,theCutVar; 
-   double mean=0,stdev=0;
-   std::vector<double> v,time; 
+   std::string theVar;
+   std::vector<double> out; 
 
    // vectors to store results
    std::vector<std::string> DEV,BEAM_STATE; 
    std::vector<int> GRP; 
-   std::vector<double> MU,SIG;
+   std::vector<double> TIME,MU,SIG;
    // for epics vars  
    std::vector<std::string> EDEV,EBEAM_STATE; 
    std::vector<int> EGRP; 
    std::vector<double> EMU,ESIG; 
 
+   std::vector<scalerData_t> raw,data; 
+   mgr->GetVector_scaler("sbs",raw); 
+
+   char var[200]; 
+
    // let's do cuts on each variable defined 
    const int NC = cutList.size(); 
    for(int i=0;i<NC;i++){
       // define variable and get a vector of all data  
-      theCutVar = Form("%s",cutList[i].cut_var.c_str());
       if(cutList[i].arm.compare("E")==0){
 	 // EPICS variable 
-	 theVar = Form("%s",cutList[i].dev.c_str());
+	 sprintf(var,"%s",cutList[i].dev.c_str()); 
       }else{
-	 theVar = Form("%s.rate",cutList[i].dev.c_str());
+	 sprintf(var,"%s.rate",devName.c_str()); 
       }
-      mgr->GetVector(cutList[i].arm.c_str(),theCutVar.Data(),time);
-      mgr->GetVector(cutList[i].arm.c_str(),theVar.Data(),v);
-      // compute stats with cuts 
-      bcm_util::GetStatsWithCuts(time,v,cutList[i].low,cutList[i].high,mean,stdev);
-      std::cout << Form("[Cuts applied: cut lo = %.3lf, cut hi = %.3lf, group: %d]: %s mean = %.3lf, stdev = %.3lf",
-                        cutList[i].low,cutList[i].high,cutList[i].group,theVar.Data(),mean,stdev) << std::endl; 
+      theVar = var; 
+      // apply the cut 
+      cut_util::ApplyCut(cutList[i],raw,data); 
+      // compute stats on the cut data for the variable
+      GetStats(theVar,data,out);
       // save results
-      if(cutList[i].arm.compare("E")==0){
-	 EDEV.push_back( cutList[i].dev );  
-	 EBEAM_STATE.push_back( cutList[i].beam_state );  
-	 EGRP.push_back( cutList[i].group );  
-	 EMU.push_back(mean);  
-	 ESIG.push_back(stdev); 
-      }else{ 
-	 DEV.push_back( cutList[i].dev );  
-	 BEAM_STATE.push_back( cutList[i].beam_state );  
-	 GRP.push_back( cutList[i].group );  
-	 MU.push_back(mean);  
-	 SIG.push_back(stdev); 
-      } 
+      DEV.push_back( devName );  
+      BEAM_STATE.push_back( cutList[i].beam_state );  
+      GRP.push_back( cutList[i].group );  
+      TIME.push_back(out[0]);  
+      MU.push_back(out[1]);  
+      SIG.push_back(out[2]); 
       // set up for next cut 
-      v.clear();
-      time.clear();
+      data.clear();
+      out.clear();
    }
+
+   // make output directory
+   util_df::MakeDirectory(out_dir.c_str());  
+
+   char outpath[200];
+   sprintf(outpath,"%s/%s.csv",out_dir.c_str(),devName.c_str());
 
    // write results to file
    const int NROW = DEV.size(); 
@@ -108,8 +117,31 @@ int bcmCalibProcessCuts(const char *confPath){
    csv->SetColumn<double>(3,MU); 
    csv->SetColumn<double>(4,SIG);
    csv->SetHeader("dev,beam_state,group,mean,stdev");
-   csv->WriteFile(out_path.c_str()); 
+   csv->WriteFile(outpath); 
    delete csv; 
  
+   return 0;
+}
+//______________________________________________________________________________
+int GetStats(std::string var,std::vector<scalerData_t> data,std::vector<double> &out){
+   // we want the time stamp, and mean BCM values for variable named var 
+   
+   const int N = data.size();
+   std::vector<double> time,v; 
+   for(int i=0;i<N;i++){
+      time.push_back(data[i].time); 
+      v.push_back( data[i].getValue(var) ); 
+   }  
+
+   // get values
+   double theTime = time[0]; // note: using first time stamp! 
+   double mean    = math_df::GetMean<double>(v);   
+   double stdev   = math_df::GetStandardDeviation<double>(v);  
+
+   // store in output vector
+   out.push_back(theTime); 
+   out.push_back(mean); 
+   out.push_back(stdev); 
+  
    return 0;
 }

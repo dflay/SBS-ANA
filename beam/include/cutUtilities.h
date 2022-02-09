@@ -21,7 +21,13 @@ namespace cut_util {
    int ApplyCuts_alt(std::vector<cut_t> cutList,std::vector<scalerData_t> in,std::vector<scalerData_t> &out); 
    int ApplyCuts_alt(std::vector<cut_t> cutList,std::vector<epicsData_t> in,std::vector<epicsData_t> &out); 
    int GetStatsWithCuts(std::vector<double> x,std::vector<double> y,
-                        double cutLo,double cutHi,double &mean,double &stdev); 
+                        double cutLo,double cutHi,double &mean,double &stdev);
+
+   int GetStatsWithCuts(double cutLo,double cutHi,
+                        std::vector<double> x,std::vector<double> y1,std::vector<double> y2,
+                        double &mean1,double &stdev1,double &mean2,double &stdev2);  
+
+   int ApplyCut(cut_t aCut,std::vector<scalerData_t> data,std::vector<scalerData_t> &out);  
 
    bool PassCut(cut_t cut,scalerData_t event); 
    bool PassCut_alt(cut_t cut,scalerData_t event); 

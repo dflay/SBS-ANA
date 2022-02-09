@@ -26,20 +26,6 @@ TGraphErrors *GetResiduals(TF1 *fit,std::vector<double> x,std::vector<double> y,
 int unserCalibrate(){
 
    int rc=0;
-   // std::vector<std::string> label,path;
-   // rc = bcm_util::LoadConfigPaths("./input/unser-calib.csv",label,path);
-
-   // std::string datapath,outpath_cc,fitMin_str,fitMax_str;
-   // const int NF = label.size();
-   // for(int i=0;i<NF;i++){
-   //    if(label[i].compare("datapath")==0)   datapath   = path[i];
-   //    if(label[i].compare("outpath_cc")==0) outpath_cc = path[i];
-   //    if(label[i].compare("fitMin")==0)     fitMin_str = path[i];
-   //    if(label[i].compare("fitMax")==0)     fitMax_str = path[i];
-   // }
-
-   // double fitMin = std::atof( fitMin_str.c_str() ); 
-   // double fitMax = std::atof( fitMax_str.c_str() );
  
    JSONManager *jmgr = new JSONManager("./input/json/unser-calib.json"); 
    std::string datapath   = jmgr->GetValueFromKey_str("datapath"); 
