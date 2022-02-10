@@ -8,6 +8,7 @@
 //   1. Add functionality to save the plot (and call to util_df::MakeDirectory)  
 //   2. Create Unser calibration coefficient file
 //   3. Add fit boundaries to config file (unique to each BCM!) 
+//   4. Print fit results to screen  
 
 #include <cstdlib>
 #include <iostream> 
@@ -41,9 +42,12 @@ int bcmCalibrateFinal(const char *confPath){
 
    // load configuration file 
    JSONManager *jmgr = new JSONManager(confPath);
-   std::string dataPath  = jmgr->GetValueFromKey_str("data-path");
-   std::string outPath   = jmgr->GetValueFromKey_str("out-path");
-   std::string unsccPath = jmgr->GetValueFromKey_str("uns-cc-path"); 
+   std::string unsccPath = jmgr->GetValueFromKey_str("unser-cc-path"); 
+   std::string tag       = jmgr->GetValueFromKey_str("tag"); 
+
+   char data_dir[200],plot_dir[200];
+   sprintf(data_dir,"./output/%s",tag.c_str());
+   sprintf(plot_dir,"./plots/%s" ,tag.c_str());
 
    const int NF = jmgr->GetValueFromKey<int>("nbcm"); 
    std::vector<double> fitMin,fitMax; 
@@ -53,7 +57,7 @@ int bcmCalibrateFinal(const char *confPath){
 
    // load Unser data 
    char unserPath[200]; 
-   sprintf(unserPath,"%s/unser.csv",dataPath.c_str()); 
+   sprintf(unserPath,"%s/unser.csv",data_dir); 
    std::vector<producedVariable_t> unser;
    rc = bcm_util::LoadProducedVariables(unserPath,unser);
    if(rc!=0) return 1;
@@ -95,7 +99,7 @@ int bcmCalibrateFinal(const char *confPath){
    std::vector<producedVariable_t> bcm,bcm_ps; 
    for(int i=0;i<N;i++){
       // load data
-      sprintf(inpath,"%s/%s.csv",dataPath.c_str(),bcmVar[i].c_str()); 
+      sprintf(inpath,"%s/%s.csv",data_dir,bcmVar[i].c_str()); 
       rc = bcm_util::LoadProducedVariables(inpath,bcm);
       // subtract pedestal
       CalculatePedestalSubtraction(bcm,bcm_ps);
@@ -135,10 +139,18 @@ int bcmCalibrateFinal(const char *confPath){
       bcm_ps.clear(); 
    }
 
-   // save the canvas 
+   // create output directory for plot 
+   util_df::MakeDirectory(plot_dir);
+
+   // save the canvas
+   TString plotPath = Form("%s/%s.pdf",plot_dir,tag.c_str()); 
+   c1->cd();
+   c1->Print(plotPath);  
 
    // print results to file
-   bcm_util::WriteToFile_cc(outPath.c_str(),cc);  
+   char outpath[200];
+   sprintf(outpath,"%s/result.csv",data_dir); 
+   bcm_util::WriteToFile_cc(outpath,cc);  
 
    return 0;
 }

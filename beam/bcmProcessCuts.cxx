@@ -28,24 +28,28 @@ int bcmProcessCuts(const char *confPath){
 
    // read input configuration file 
    JSONManager *jmgr = new JSONManager(confPath);
+   std::string tag      = jmgr->GetValueFromKey_str("tag"); 
    std::string prefix   = jmgr->GetValueFromKey_str("ROOTfile-path");
-   std::string run_path = jmgr->GetValueFromKey_str("run-path");
-   std::string cut_path = jmgr->GetValueFromKey_str("cut-path");
    std::string out_path = jmgr->GetValueFromKey_str("out-path");
    std::string bcmCalibPath = jmgr->GetValueFromKey_str("bcm-cc-path");
    delete jmgr; 
 
+   char run_path[200],cut_path[200],out_path[200]; 
+   sprintf(run_path,"./input/%s/runlist.csv"     ,tag.c_str()); 
+   sprintf(cut_path,"./input/%s/cuts/cutlist.csv",tag.c_str());
+   // sprintf(out_path,"./output/%s" 
+
    BCMManager *mgr = new BCMManager("NONE",bcmCalibPath.c_str(),false);
 
    std::vector<codaRun_t> runList;
-   rc = util_df::LoadRunList(run_path.c_str(),prefix.c_str(),runList);
+   rc = util_df::LoadRunList(run_path,prefix.c_str(),runList);
    if(rc!=0) return 1;
 
    util_df::LoadBCMData(runList,mgr);
    if(rc!=0) return 1;
 
    std::vector<cut_t> cutList; 
-   rc = bcm_util::LoadCuts(cut_path.c_str(),cutList); 
+   rc = bcm_util::LoadCuts(cut_path,cutList); 
    if(rc!=0) return 1; 
    
    TString theVar,theCutVar; 
