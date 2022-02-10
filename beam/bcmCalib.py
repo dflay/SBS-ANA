@@ -8,7 +8,6 @@ import sys
 # 1. read in a config file
 # 2. make config file to each script below come from a JSON file (step 1) 
 
-
 #===============================================================================
 # process all cuts (on all BCM variables)  
 varList    = ["unser","u1","unew","d1","d3","d10","dnew"]
