@@ -1,307 +1,343 @@
-// compute BCM calibration coefficients
+// Compute BCM calibration coefficients
+// - Uses the output of bcmCalibProcessCuts.cxx
+// - Computes (beam-on) - (beam-off) BCM rates (all variables) 
+//   and plots as a function of the Unser current.
+//   Linear fit produces the calibration coefficients  
+//
+//   TODO
+//   1. Print fit results to screen  
 
 #include <cstdlib>
-#include <iostream>
-#include <vector>
-#include <string> 
+#include <iostream> 
 
-#include "./include/calibCoeff.h"
+#include "TTree.h"
+#include "TFile.h"
+#include "TH1F.h"
+#include "TStyle.h"
+#include "TPad.h"
+#include "TLine.h"
+
 #include "./include/producedVariable.h"
-#include "./src/bcmUtilities.cxx"
+#include "./include/calibCoeff.h"
+#include "./include/codaRun.h"
+#include "./src/ABA.cxx"
 #include "./src/Graph.cxx"
-
-bool gIsDebug = false;
+#include "./src/CSVManager.cxx"
+#include "./src/JSONManager.cxx"
+#include "./src/bcmUtilities.cxx"
 
 double myFitFunc(double *x,double *p); 
+int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out); 
+int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
+                     std::vector<producedVariable_t> &unser_cur); 
 
-int PrintToFile(const char *outpath,std::vector<calibCoeff_t> data); 
-int PrintToFile(const char *outpath,std::vector<producedVariable_t> data); 
-int GetUnserCurrent(std::vector<producedVariable_t> data,std::vector<double> cc,
-                    std::vector<double> &x,std::vector<double> &dx); 
+TGraphErrors *GetTGraphErrors(std::vector<producedVariable_t> unser,std::vector<producedVariable_t> bcm); 
 
-TGraphErrors *GetTGraphErrors(std::string xAxis,std::string yAxis,std::vector<producedVariable_t> data); 
+int bcmCalibrate(const char *confPath){
 
-int bcmCalibrate(){
+   std::cout << "========== COMPUTING BCM CALIBRATION COEFFICIENTS ==========" << std::endl;
 
-   int rc=0;
-   std::vector<std::string> label,path;
-   rc = bcm_util::LoadConfigPaths("./input/bcm-calib.csv",label,path); 
+   // load configuration file 
+   JSONManager *jmgr = new JSONManager(confPath);
+   std::string unsccPath = jmgr->GetValueFromKey_str("unser-cc-path"); 
+   std::string tag       = jmgr->GetValueFromKey_str("tag"); 
 
-   std::string on_path,off_path,out_path,e_path,out_path_cc; 
-   const int NF = label.size();
-   for(int i=0;i<NF;i++){
-      if(label[i].compare("beam_off")==0)   off_path    = path[i]; 
-      if(label[i].compare("beam_on")==0)    on_path     = path[i]; 
-      if(label[i].compare("epics")==0)      e_path      = path[i]; 
-      if(label[i].compare("outpath")==0)    out_path    = path[i]; 
-      if(label[i].compare("outpath_cc")==0) out_path_cc = path[i]; 
-   }
+   char data_dir[200],plot_dir[200];
+   sprintf(data_dir,"./output/%s",tag.c_str());
+   sprintf(plot_dir,"./plots/%s" ,tag.c_str());
 
-   std::vector<producedVariable_t> off;
-   rc = bcm_util::LoadProducedVariables(off_path.c_str(),off);
-   if(rc!=0) return 1; 
+   std::vector<double> fitMin,fitMax; 
+   jmgr->GetVectorFromKey<double>("fit-min",fitMin); 
+   jmgr->GetVectorFromKey<double>("fit-max",fitMax); 
+   delete jmgr;
 
-   std::vector<producedVariable_t> on;
-   rc = bcm_util::LoadProducedVariables(on_path.c_str(),on);
-   if(rc!=0) return 1; 
+   // load Unser data 
+   char unserPath[200]; 
+   sprintf(unserPath,"%s/unser.csv",data_dir); 
+   std::vector<producedVariable_t> unser;
+   rc = bcm_util::LoadProducedVariables(unserPath,unser);
+   if(rc!=0) return 1;
 
-   std::vector<producedVariable_t> epics; 
-   rc = bcm_util::LoadProducedVariables(e_path.c_str(),epics);
-   if(rc!=0) return 1; 
+   // compute pedestal subtracted Unser rates, convert to current
+   std::vector<producedVariable_t> unser_ps; 
+   CalculatePedestalSubtraction(unser,unser_ps); 
+   // load Unser calibration coefficients 
+   std::vector<calibCoeff_t> unsCC;
+   LoadFittedOffsetGainData(unsccPath.c_str(),unsCC); 
+   // convert to current 
+   std::vector<producedVariable_t> unser_cur;
+   ConvertToCurrent(unsCC[0],unser_ps,unser_cur); // only ONE set of unser calibration coefficients!  
 
-   // compute difference for all variables
-   bool printToScreen = true;
-   std::vector<producedVariable_t> diff;
-   bcm_util::SubtractBaseline(on,off,diff,printToScreen);  
-   rc = PrintToFile(out_path.c_str(),diff);
+   // load each BCM variable; compute pedestal-subtracted 
+   // values. create plots of ped-subtracted rates vs Unser current 
+   const int N = 6; 
+   std::string bcmVar[N] = {"u1","unew","d1","d3","d10","dnew"};
+
+   TGraphErrors **g = new TGraphErrors*[N]; 
+   TF1 **myFit      = new TF1*[N]; 
  
-   // now append the epics data to the diff vector for processing below 
-   const int NE = epics.size();
-   for(int i=0;i<NE;i++){
-      std::cout << "Adding: " << epics[i].dev << std::endl;
-      bcm_util::Print(epics[i]); 
-      diff.push_back(epics[i]); 
-   }
- 
-   // start extracting calibration coefficients 
+   // set up fit parameters
+   const int npar=2;
+   double offset=0,offsetErr=0,slope=0,slopeErr=0; 
 
-   // set up fit function 
-   const int npar = 2; 
-   double par[npar] = {0,0};
-   double min = 0; 
-   double max = 100; // in uA   
-   TF1 *myFit = new TF1("myFit",myFitFunc,min,max,npar);
-   for(int i=0;i<npar;i++) myFit->SetParameter(i,0);
- 
-   // get EPICS beam current value, and Unser values and create a plot  
-   TGraphErrors *gUnser_cc = GetTGraphErrors("IBC1H04CRCUR2","unser",diff);  
-   graph_df::SetParameters(gUnser_cc,20,kBlack); 
+   // calibration coefficient output 
+   calibCoeff_t ccPt; 
+   std::vector<calibCoeff_t> cc; 
 
-   TCanvas *c1 = new TCanvas("c1","Unser vs IBC1H04CRCUR2",1200,800);
- 
-   c1->cd();
-   gUnser_cc->Draw("ap");
-   graph_df::SetLabels(gUnser_cc,"Unser Calibration","IBC1H04CRCUR2 [#muA]","Unser [Hz]"); 
-   gUnser_cc->Draw("ap");
-   gUnser_cc->Fit("myFit","Q"); 
-   c1->Update(); 
+   int NCOL=3,NROW=2;
+   TCanvas *c1 = new TCanvas("c1","BCM Calibration",1200,800);
+   c1->Divide(NCOL,NROW);  
 
-   // extract fit parameters 
-   double offset = myFit->GetParameter(0); 
-   double slope  = myFit->GetParameter(1);
+   TString Title,xAxisTitle,yAxisTitle,fitName;
 
-   std::cout << "====== FIT RESULTS ======" << std::endl;
-   std::cout << Form("dev    = unser")              << std::endl;
-   std::cout << Form("offset = %.3lf Hz"   ,offset) << std::endl; 
-   std::cout << Form("slope  = %.3lf Hz/uA",slope ) << std::endl;
-   std::cout << "=========================" << std::endl; 
-
-   std::vector<double> unser_cc;
-   unser_cc.push_back(offset); 
-   unser_cc.push_back(slope); 
-
-   // plot BCMs against the Unser [current].  The extracted slopes are used in the calibration coefficients  
-   // get the unser current 
-   std::vector<double> ux,udx; 
-   rc = GetUnserCurrent(diff,unser_cc,ux,udx);  
+   char inpath[200]; 
    
-   // make all BCM plots
-   std::vector<double> y,dy; 
-   std::vector<std::string> BCMName;
-   BCMName.push_back("u1"); 
-   BCMName.push_back("unew"); 
-   BCMName.push_back("dnew"); 
-   BCMName.push_back("d1"); 
-   BCMName.push_back("d3"); 
-   BCMName.push_back("d10"); 
-   const int NB = BCMName.size();;  
-   TGraphErrors **g = new TGraphErrors*[NB]; 
-   for(int i=0;i<NB;i++){
-      bcm_util::GetData(BCMName[i],diff,y,dy);
-      g[i] = graph_df::GetTGraphErrors(ux,y,dy); 
-      graph_df::SetParameters(g[i],20,kBlack);  
-      // set up for next one 
-      y.clear();
-      dy.clear();  
-   }
-
-   TCanvas *c2 = new TCanvas("c2","BCM Calibration",1400,800); 
-   c2->Divide(3,2); 
-
-   TString Title,yAxisTitle;
-   TString xAxisTitle = Form("Unser Current [#muA]");
-
-   calibCoeff_t cc; 
-   std::vector<calibCoeff_t> CC; 
-
-   std::cout << "===== FIT RESULTS =====" << std::endl;
-   for(int i=0;i<NB;i++){
-      Title      = Form("%s",BCMName[i].c_str());
-      yAxisTitle = Form("%s [Hz]",BCMName[i].c_str());
-      c2->cd(i+1);
+   std::vector<producedVariable_t> bcm,bcm_ps; 
+   for(int i=0;i<N;i++){
+      // load data
+      sprintf(inpath,"%s/%s.csv",data_dir,bcmVar[i].c_str()); 
+      rc = bcm_util::LoadProducedVariables(inpath,bcm);
+      // subtract pedestal
+      CalculatePedestalSubtraction(bcm,bcm_ps);
+      // create TGraphError plot  
+      g[i] = GetTGraphErrors(unser_cur,bcm_ps); 
+      graph_df::SetParameters(g[i],20,kBlack);
+      // set up the fit function 
+      fitName = Form("fit_%s",bcmVar[i].c_str());
+      myFit[i] = new TF1(fitName,myFitFunc,fitMin[i],fitMax[i],npar);
+      for(int j=0;j<npar;j++) myFit->SetParameter(j,0);
+      // set titles 
+      Title      = Form("%s"                  ,bcmVar[i].c_str());
+      xAxisTitle = Form("Unser Current [#muA]",bcmVar[i].c_str());
+      yAxisTitle = Form("%s rate [Hz]"        ,bcmVar[i].c_str());
+      // plot data 
+      c1->cd(i+1);  
       g[i]->Draw("ap"); 
-      graph_df::SetLabels(g[i],Title,xAxisTitle,yAxisTitle); 
-      // graph_df::SetLabelSizes(g[i],0.05,0.06); 
+      graph_df::SetLabels(g[i],Title,xAxisTitle,yAxisTitle);
       g[i]->Draw("ap");
-      g[i]->Fit("myFit","Q");
-      c2->Update(); 
-      // get fit parameters 
-      offset = myFit->GetParameter(0);  
-      slope  = myFit->GetParameter(1);
-      cc.dev = BCMName[i]; 
-      cc.offset = offset; 
-      cc.slope  = slope;
-      CC.push_back(cc); 
-      std::cout << Form("dev = %s, offset = %.3lf Hz, slope = %.3lf Hz/uA",BCMName[i].c_str(),offset,slope) << std::endl;
+      // fit the data
+      g[i]->Fit(fitName,"QR");
+      c1->Update(); 
+      // extract fit results
+      offset    = myFit[i]->GetParameter(0); 
+      offsetErr = myFit[i]->GetParError(0); 
+      slope     = myFit[i]->GetParameter(1); 
+      slopeErr  = myFit[i]->GetParError(1); 
+      // store results 
+      ccPt.dev       = bcmVar[i];
+      ccPt.offset    = offset; 
+      ccPt.offsetErr = offsetErr;
+      ccPt.slope     = slope;
+      ccPt.slopeErr  = slopeErr;
+      cc.push_back(ccPt);
+      // print to screen 
+      std::cout << Form("bcm = %s, offset = %.3lf ± %.3lf, slope = %.3lf ± %.3lf",
+                        ccPt.dev.c_str(),ccPt.offset,ccPt.offsetErr,ccPt.slope,ccPt.slopeErr) << std::endl;
+      // set up for next BCM
+      bcm.clear();
+      bcm_ps.clear(); 
    }
-   std::cout << "=======================" << std::endl;
 
-   rc = PrintToFile(out_path_cc.c_str(),CC);
+   std::cout << "----------------" << std::endl;
 
-   return rc;
-}
-//______________________________________________________________________________
-int GetUnserCurrent(std::vector<producedVariable_t> data,std::vector<double> cc,
-                    std::vector<double> &x,std::vector<double> &dx){
-   // get unser data out of the full list of beam-off subtracted data
-   std::vector<producedVariable_t> X;
-   const int N = data.size();
-   for(int i=0;i<N;i++){
-      if(data[i].dev.compare("unser")==0) X.push_back(data[i]);  
-   } 
-   // now compute the unser current [in uA]  
-   const int NX = X.size();
-   if(NX==0){
-      std::cout << "[bcmCalibrate::GetUnserCurrent]: No data!" << std::endl;
-      return 1;
-   }
-   double offset = cc[0]; 
-   double slope  = cc[1]; 
-   double arg=0,argErr=0;
-   for(int i=0;i<NX;i++){
-      arg    = (X[i].mean-offset)/slope;
-      argErr = X[i].stdev/slope;
-      x.push_back(arg);   
-      dx.push_back(argErr);   
-   } 
+   // create output directory for plot 
+   util_df::MakeDirectory(plot_dir);
+
+   // save the canvas
+   TString plotPath = Form("%s/%s.pdf",plot_dir,tag.c_str()); 
+   c1->cd();
+   c1->Print(plotPath);  
+
+   // print results to file
+   char outpath[200];
+   sprintf(outpath,"%s/result.csv",data_dir); 
+   bcm_util::WriteToFile_cc(outpath,cc);  
+
    return 0;
 }
 //______________________________________________________________________________
-TGraphErrors *GetTGraphErrors(std::string xAxis,std::string yAxis,std::vector<producedVariable_t> data){
-   // get a plot from the list of produced variables 
-   std::vector<producedVariable_t> X,Y; 
+int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
+                     std::vector<producedVariable_t> &unser_cur){
+   double T1=0,T2=0
+   double current=0,currentErr=0;
+   producedVariable_t data;
+   const int N = unser_ps.size();
+   for(int i=0;i<N;i++){
+      // compute current 
+      current    = (unser_ps[i].mean - cc.offset)/cc.slope;
+      // compute error
+      T1         = cc.slope*cc.slope*(unser_ps[i].stdev*unser_ps[i].stdev + cc.offsetErr*cc.offsetErr); 
+      T2         = cc.slopeErr*cc.slopeErr*TMath::Power(unser_ps[i].mean - cc.offset,2.) 
+      currentErr = TMath::Power(1./cc.slope,2.)*TMath::Sqrt(T1 + T2); 
+      // save result
+      data.mean  = current;
+      data.stdev = currentErr;
+      unser_cur.push_back(data); 
+   }
+   return 0;
+}
+//______________________________________________________________________________
+int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out){
+   // compute pedestal-subtracted rates 
+   // utilizes ABA method to account for zero-point drift
+   // - input:  vector of beam-on and beam-off data (each entry for beam on and off for a given group/beam current) 
+   // - output: vector of (beam-on) - (beam-off) results (entry for each group/beam current)  
+   ABA *myABA = new ABA();
+   myABA->UseTimeWeight();
+   myABA->SetVerbosity(1);   
 
+   double mean=0,err=0,stdev=0,argErr=0;
+   std::vector<double> w,aba,abaErr; 
+   std::vector<double> timeOn,on,onErr;
+   std::vector<double> timeOff,off,offErr;
+
+   producedVariable_t aPt; 
+
+   int M=0;
+   int grp_prev = data[0].group; // effective beam current  
    const int N = data.size();
    for(int i=0;i<N;i++){
-      // find the x and y axes  
-      if(xAxis.compare(data[i].dev)==0){
-	 X.push_back(data[i]);  
+      std::cout << Form("==== GROUP %d ====",data[i].group) << std::endl;
+      // check the group 
+      if(data[i].group==grp_prev){
+	 // group match! store data based on beam state 
+	 if(data[i].beam_state.compare("on")==0){
+	    timeOn.push_back( data[i].time );
+	    on.push_back( data[i].mean );
+	    onErr.push_back( data[i].stdev );
+	 }else if(data[i].beam_state.compare("off")==0){
+	    timeOff.push_back( data[i].time );
+	    off.push_back( data[i].mean );
+	    offErr.push_back( data[i].stdev );
+	 }
+      }else{
+         // new group! compute ABA stats
+	 // check 
+	 M = timeOff.size();
+	 for(int j=0;j<M;j++){
+	    std::cout << Form("off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
+		  timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]) << std::endl;
+	 }
+	 if(M==1){
+	    std::cout << "**** ONLY ONE CYCLE! GROUP " << grp_prev << std::endl;
+	    // account for one cycle
+	    mean = on[0] - off[0];
+	    err  = TMath::Sqrt( onErr[0]*onErr[0] + offErr[0]*offErr[0] );
+	    stdev = err;
+	 }else{
+	    // compute ABA stats
+	    myABA->GetDifference(timeOff,off,offErr,timeOn,on,onErr,aba,abaErr);
+	    M = aba.size();
+	    for(int j=0;j<M;j++){
+	       argErr = abaErr[j]*abaErr[j];
+	       if(abaErr[j]!=0){
+		  w.push_back(1./argErr);
+	       }else{
+		  w.push_back(1);
+	       }
+	    }
+	    // compute the weighted mean
+	    math_df::GetWeightedMean<double>(aba,w,mean,err);
+	    stdev = math_df::GetStandardDeviation<double>(aba);
+	    // we compute (A-B), but we actually want B-A
+	    mean *= -1;
+	 }
+         // store results
+         aPt.mean  = mean;
+	 aPt.stdev = stdev;
+         out.push_back(aPt);
+	 // set up for next
+	 w.clear();
+	 aba.clear();
+	 abaErr.clear();
+	 timeOn.clear();
+	 on.clear(); 
+	 onErr.clear(); 
+	 timeOff.clear();
+	 off.clear(); 
+	 offErr.clear(); 
+         // store this one since it's needed for the next set!  
+	 if(data[i].beam_state.compare("on")==0){
+	    timeOn.push_back( data[i].time );
+	    on.push_back( data[i].mean );
+	    onErr.push_back( data[i].stdev );
+	 }else if(data[i].beam_state.compare("off")==0){
+	    timeOff.push_back( data[i].time );
+	    off.push_back( data[i].mean );
+	    offErr.push_back( data[i].stdev );
+	 }
       }
-      if(yAxis.compare(data[i].dev)==0){
-	 Y.push_back(data[i]);  
-      }
+      grp_prev = data[i].group;
    }
 
-   const int NX = X.size(); 
-   const int NY = Y.size(); 
+   // get the last index computed 
+   M = timeOff.size();
+   for(int j=0;j<M;j++){
+      std::cout << Form("off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
+            timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]) << std::endl;
+   }
+   // new group; compute ABA stats
+   w.clear();
+   aba.clear();
+   abaErr.clear();
+   if(M==1){
+      std::cout << "**** ONLY ONE CYCLE! GROUP " << grp_prev << std::endl;
+      // account for one cycle
+      mean = on[0] - off[0];
+      err  = TMath::Sqrt( onErr[0]*onErr[0] + offErr[0]*offErr[0] );
+      stdev = err;
+   }else{
+      // compute ABA stats
+      myABA->GetDifference(timeOff,off,offErr,timeOn,on,onErr,aba,abaErr);
+      M = aba.size();
+      for(int j=0;j<M;j++){
+	 argErr = abaErr[j]*abaErr[j];
+	 if(abaErr[j]!=0){
+	    w.push_back(1./argErr);
+	 }else{
+	    w.push_back(1);
+	 }
+      }
+      // compute the weighted mean
+      math_df::GetWeightedMean<double>(aba,w,mean,err);
+      stdev = math_df::GetStandardDeviation<double>(aba);
+      // we compute (A-B), but we actually want B-A
+      mean *= -1;
+   }
+   // store results
+   aPt.mean  = mean;
+   aPt.stdev = stdev;
+   out.push_back(aPt);
 
-   if(gIsDebug){
-      std::cout << "x axis data: " << std::endl; 
-      for(int i=0;i<NX;i++) bcm_util::Print(X[i]);  
-   } 
+   delete myABA; 
 
-   // store data to useful vectors for plotting 
-   std::vector<double> x,ex; 
+   return 0;
+}
+//______________________________________________________________________________
+TGraphErrors *GetTGraphErrors(std::vector<producedVariable_t> unser,std::vector<producedVariable_t> bcm){
+   // produce a plot of the BCM rate (y axis) against the unser current (x axis)  
+
+   const int NX = unser.size();
+   const int NY = bcm.size();
+   if(NX!=NY){
+      std::cout << "[GetTGraphErrors]: ERROR! Unser NPTS != BCM NPTS!" << std::endl;
+      exit(1); 
+   }
+
+   std::vector<double> x,ex,y,ey; 
    for(int i=0;i<NX;i++){
-      x.push_back(X[i].mean); 
-      ex.push_back(X[i].stdev); 
+      x.push_back(unser[i].mean); 
+      ex.push_back(unser[i].stdev); 
+      y.push_back(bcm[i].mean); 
+      ey.push_back(bcm[i].stdev); 
    }
 
-   if(gIsDebug){
-      std::cout << "y axis data: " << std::endl; 
-      for(int i=0;i<NY;i++) bcm_util::Print(Y[i]);   
-   } 
-
-   // store data to useful vectors for plotting 
-   std::vector<double> y,ey; 
-   for(int i=0;i<NY;i++){
-      y.push_back(Y[i].mean); 
-      ey.push_back(Y[i].stdev); 
-   }
-
-   TGraphErrors *g = graph_df::GetTGraphErrors(x,y,ey); 
+   TGraphErrors *g = graph_df::GetTGraphErrors(x,ex,y,ey); 
    return g;
-
-}
-//______________________________________________________________________________
-int PrintToFile(const char *outpath,std::vector<calibCoeff_t> data){
-
-  std::vector<std::string> dev;
-  std::vector<double> offset,offsetErr,slope,slopeErr;
-  const int N = data.size();
-  for(int i=0;i<N;i++){
-     dev.push_back(data[i].dev); 
-     offset.push_back(data[i].offset); 
-     offsetErr.push_back(data[i].offsetErr); 
-     slope.push_back(data[i].slope);  
-     slopeErr.push_back(data[i].slopeErr); 
-  }
-
-  std::string header = "dev,offset(Hz),offsetErr(Hz),slope(Hz/uA),slopeErr(Hz/uA)"; 
-
-  const int NROW = dev.size();
-  const int NCOL = 5;  
-  CSVManager *csv = new CSVManager();
-  csv->InitTable(NROW,NCOL);
-  csv->SetColumn_str(0,dev); 
-  csv->SetColumn<double>(1,offset); 
-  csv->SetColumn<double>(2,offsetErr); 
-  csv->SetColumn<double>(3,slope); 
-  csv->SetColumn<double>(4,slopeErr);
-  csv->SetHeader(header);
-  csv->WriteFile(outpath); 
-
-  delete csv;  
-
-  return 0;
-}
-//______________________________________________________________________________
-int PrintToFile(const char *outpath,std::vector<producedVariable_t> data){
-
-   std::vector<std::string> DEV,BEAM_STATE; 
-   std::vector<int> GRP; 
-   std::vector<double> MU,SIG; 
-
-   // write results to file
-   const int N = data.size();
-   for(int i=0;i<N;i++){
-      MU.push_back(data[i].mean); 
-      SIG.push_back(data[i].stdev);
-      DEV.push_back(data[i].dev);
-      BEAM_STATE.push_back(data[i].beam_state); 
-      GRP.push_back(data[i].group); 
-   }
-
-   std::string header = "dev,beam_state,group,mean,stdev"; 
-
-   const int NROW = DEV.size();
-   const int NCOL = 5;
-   CSVManager *csv = new CSVManager();
-   csv->InitTable(NROW,NCOL);
-   csv->SetColumn_str(0,DEV);
-   csv->SetColumn_str(1,BEAM_STATE);
-   csv->SetColumn<int>(2,GRP);
-   csv->SetColumn<double>(3,MU);
-   csv->SetColumn<double>(4,SIG);
-   csv->SetHeader(header);
-   csv->WriteFile(outpath);
-
-   delete csv;
-   return 0;
 }
 //______________________________________________________________________________
 double myFitFunc(double *x,double *p){
    // linear fit
-   double f = p[0] + p[1]*x[0]; 
-   return f; 
+   double f = p[0] + p[1]*x[0];
+   return f;
 }

@@ -1,4 +1,5 @@
-// Plot all BCM data vs Unser current  
+// Plot all BCM data vs Unser current 
+// This is the "in-run" method  
 
 #include <cstdlib>
 #include <iostream>
@@ -20,7 +21,7 @@
 
 double fitFunc(double *x,double *p); 
 
-int bcmCalibrate_new(const char *confPath){
+int bcmCalibrate_alt(const char *confPath){
 
    // settings 
    bool logScale   = false;

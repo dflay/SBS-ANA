@@ -35,7 +35,7 @@ for var in varList:
   os.system(cmd) 
 #===============================================================================
 # compute BCM calibration coefficients
-scriptName = "bcmCalibrateFinal.cxx"
+scriptName = "bcmCalibrate.cxx"
 cmd        = "analyzer -q -b -l '{0}(\"{1}\")''".format(scriptName,jConfPath)
 print(cmd)
 os.system(cmd) 
