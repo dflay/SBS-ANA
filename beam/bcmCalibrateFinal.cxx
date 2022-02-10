@@ -84,8 +84,9 @@ int bcmCalibrateFinal(const char *confPath){
    calibCoeff_t ccPt; 
    std::vector<calibCoeff_t> cc; 
 
+   int NCOL=3,NROW=2;
    TCanvas *c1 = new TCanvas("c1","BCM Calibration",1200,800);
-   c1->Divide(2,3); 
+   c1->Divide(NCOL,NROW);  
 
    TString Title,xAxisTitle,yAxisTitle,fitName;
 
