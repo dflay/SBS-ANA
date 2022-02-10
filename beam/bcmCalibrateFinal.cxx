@@ -5,10 +5,7 @@
 //   Linear fit produces the calibration coefficients  
 //
 //   TODO
-//   1. Add functionality to save the plot (and call to util_df::MakeDirectory)  
-//   2. Create Unser calibration coefficient file
-//   3. Add fit boundaries to config file (unique to each BCM!) 
-//   4. Print fit results to screen  
+//   1. Print fit results to screen  
 
 #include <cstdlib>
 #include <iostream> 
@@ -133,10 +130,15 @@ int bcmCalibrateFinal(const char *confPath){
       ccPt.slope     = slope;
       ccPt.slopeErr  = slopeErr;
       cc.push_back(ccPt);
+      // print to screen 
+      std::cout << Form("bcm = %s, offset = %.3lf ± %.3lf, slope = %.3lf ± %.3lf",
+                        ccPt.dev.c_str(),ccPt.offset,ccPt.offsetErr,ccPt.slope,ccPt.slopeErr) << std::endl;
       // set up for next BCM
       bcm.clear();
       bcm_ps.clear(); 
    }
+
+   std::cout << "----------------" << std::endl;
 
    // create output directory for plot 
    util_df::MakeDirectory(plot_dir);
@@ -156,7 +158,6 @@ int bcmCalibrateFinal(const char *confPath){
 //______________________________________________________________________________
 int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
                      std::vector<producedVariable_t> &unser_cur){
-
    double T1=0,T2=0
    double current=0,currentErr=0;
    producedVariable_t data;

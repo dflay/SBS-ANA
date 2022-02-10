@@ -57,9 +57,6 @@ int bcmPlot(const char *confPath){
       graph_df::SetParameters(g[i],20,kBlack);
    }
 
-   TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2"); 
-   graph_df::SetParameters(gEPICSCurrent,20,kBlack); 
-
    TString cName,cTitle;
   
    for(int i=0;i<N;i++){
@@ -74,17 +71,36 @@ int bcmPlot(const char *confPath){
    } 
 
    // EPICS plots
+   TGraph *gEPICS_U1      = mgr->GetTGraph("E","event","hac_bcm_dvm1_read"); 
+   TGraph *gEPICS_D1      = mgr->GetTGraph("E","event","hac_bcm_dvm2_read"); 
+   TGraph *gEPICS_IBC1H04 = mgr->GetTGraph("E","event","IBC1H04CRCUR2"); 
+   graph_df::SetParameters(gEPICS_U1     ,20,kBlack); 
+   graph_df::SetParameters(gEPICS_D1     ,20,kBlack); 
+   graph_df::SetParameters(gEPICS_IBC1H04,20,kBlack); 
 
-   TCanvas *ce = new TCanvas("ce","EPICS Beam Current",1200,800); 
+   TCanvas *ce = new TCanvas("ce","EPICS Beam Current",1200,800);
+   ce->Divide(1,3);  
 
    TString Title      = Form("Beam Current");
    TString xAxisTitle = Form("event");
    TString yAxisTitle = Form("Beam Current [#muA]");
 
-   ce->cd();
-   gEPICSCurrent->Draw("ap");
-   graph_df::SetLabels(gEPICSCurrent,Title,xAxisTitle,yAxisTitle); 
-   gEPICSCurrent->Draw("ap");
+   ce->cd(1);
+   gEPICS_IBC1H04->Draw("ap");
+   graph_df::SetLabels(gEPICS_IBC1H04,Title,xAxisTitle,yAxisTitle); 
+   gEPICS_IBC1H04->Draw("ap");
+   ce->Update(); 
+
+   ce->cd(2);
+   gEPICS_U1->Draw("ap");
+   graph_df::SetLabels(gEPICS_U1,"EPICS u1 DVM",xAxisTitle,"EPICS u1 DVM [V]"); 
+   gEPICS_U1->Draw("ap");
+   ce->Update();
+
+   ce->cd(3);
+   gEPICS_D1->Draw("ap");
+   graph_df::SetLabels(gEPICS_D1,"EPICS d1 DVM",xAxisTitle,"EPICS d1 DVM [V]"); 
+   gEPICS_D1->Draw("ap");
    ce->Update();
 
    return 0;

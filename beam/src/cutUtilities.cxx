@@ -65,8 +65,8 @@ namespace cut_util {
       int NC = jmgr->GetValueFromKey<int>("num-cuts"); 
  
       std::vector<double> min,max; 
-      jmgr->GetVectorFromKey<double>("min",NC,min);  
-      jmgr->GetVectorFromKey<double>("max",NC,max); 
+      jmgr->GetVectorFromKey<double>("min",min);  
+      jmgr->GetVectorFromKey<double>("max",max); 
 
       delete jmgr;  
 
@@ -99,8 +99,8 @@ namespace cut_util {
       int NC = jmgr->GetValueFromKey<int>("num-cuts-epics"); 
  
       std::vector<double> min,max; 
-      jmgr->GetVectorFromKey<double>("min-epics",NC,min);  
-      jmgr->GetVectorFromKey<double>("max-epics",NC,max); 
+      jmgr->GetVectorFromKey<double>("min-epics",min);  
+      jmgr->GetVectorFromKey<double>("max-epics",max); 
 
       delete jmgr;  
 

@@ -292,7 +292,9 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
 
    double epicsTime=0,IBC1H04CRCUR2=0,hac_bcm_average=0;
    double IPM1H04A_XPOS=0,IPM1H04A_YPOS=0; 
-   double IPM1H04E_XPOS=0,IPM1H04E_YPOS=0; 
+   double IPM1H04E_XPOS=0,IPM1H04E_YPOS=0;
+   double hac_bcm_dvm1_read=0,hac_bcm_dvm2_read=0; 
+   double hac_bcm_dvm1_current=0,hac_bcm_dvm2_current=0; 
 
    TChain *ch = nullptr; 
    ch = new TChain("E"); 
@@ -308,13 +310,17 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
       return 1;
    }
 
-   aTree->SetBranchAddress("IPM1H04A.XPOS"  ,&IPM1H04A_XPOS  );
-   aTree->SetBranchAddress("IPM1H04A.YPOS"  ,&IPM1H04A_YPOS  );
-   aTree->SetBranchAddress("IPM1H04E.XPOS"  ,&IPM1H04E_XPOS  );
-   aTree->SetBranchAddress("IPM1H04E.YPOS"  ,&IPM1H04E_YPOS  );
-   aTree->SetBranchAddress("hac_bcm_average",&hac_bcm_average);
-   aTree->SetBranchAddress("IBC1H04CRCUR2"  ,&IBC1H04CRCUR2  );
-   aTree->SetBranchAddress("timestamp"      ,&epicsTime      );
+   aTree->SetBranchAddress("IPM1H04A.XPOS"       ,&IPM1H04A_XPOS       );
+   aTree->SetBranchAddress("IPM1H04A.YPOS"       ,&IPM1H04A_YPOS       );
+   aTree->SetBranchAddress("IPM1H04E.XPOS"       ,&IPM1H04E_XPOS       );
+   aTree->SetBranchAddress("IPM1H04E.YPOS"       ,&IPM1H04E_YPOS       );
+   aTree->SetBranchAddress("hac_bcm_average"     ,&hac_bcm_average     );
+   aTree->SetBranchAddress("hac_bcm_dvm1_read"   ,&hac_bcm_dvm1_read   );
+   aTree->SetBranchAddress("hac_bcm_dvm2_read"   ,&hac_bcm_dvm2_read   );
+   aTree->SetBranchAddress("hac_bcm_dvm1_current",&hac_bcm_dvm1_current);
+   aTree->SetBranchAddress("hac_bcm_dvm2_current",&hac_bcm_dvm1_current);
+   aTree->SetBranchAddress("IBC1H04CRCUR2"       ,&IBC1H04CRCUR2       );
+   aTree->SetBranchAddress("timestamp"           ,&epicsTime           );
 
    epicsData_t pt; 
    for(int i=0;i<NN;i++){
@@ -327,12 +333,16 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
       }else{
 	 pt.runEvent = i; 
       }
-      pt.hac_bcm_average = hac_bcm_average; 
-      pt.IBC1H04CRCUR2   = IBC1H04CRCUR2; 
-      pt.IPM1H04A_XPOS   = IPM1H04A_XPOS;   
-      pt.IPM1H04A_YPOS   = IPM1H04A_YPOS;   
-      pt.IPM1H04E_XPOS   = IPM1H04E_XPOS;   
-      pt.IPM1H04E_YPOS   = IPM1H04E_YPOS; 
+      pt.hac_bcm_average      = hac_bcm_average; 
+      pt.hac_bcm_dvm1_read    = hac_bcm_dvm1_read; 
+      pt.hac_bcm_dvm2_read    = hac_bcm_dvm2_read; 
+      pt.hac_bcm_dvm1_current = hac_bcm_dvm1_current; 
+      pt.hac_bcm_dvm2_current = hac_bcm_dvm2_current; 
+      pt.IBC1H04CRCUR2        = IBC1H04CRCUR2; 
+      pt.IPM1H04A_XPOS        = IPM1H04A_XPOS;   
+      pt.IPM1H04A_YPOS        = IPM1H04A_YPOS;   
+      pt.IPM1H04E_XPOS        = IPM1H04E_XPOS;   
+      pt.IPM1H04E_YPOS        = IPM1H04E_YPOS; 
       fEPICS.push_back(pt);  
       fEvtCntrEPICS++; 
    } 

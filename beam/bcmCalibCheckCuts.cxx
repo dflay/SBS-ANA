@@ -20,30 +20,32 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
 
-int bcmCheckCuts(const char *confPath){
+int bcmCalibCheckCuts(const char *confPath){
 
    int rc=0;
 
    // read input configuration file 
    JSONManager *jmgr = new JSONManager(confPath);
-   std::string prefix   = jmgr->GetValueFromKey_str("ROOTfile-path");
-   std::string run_path = jmgr->GetValueFromKey_str("run-path");
-   std::string cut_path = jmgr->GetValueFromKey_str("cut-path");
-   std::string out_path = jmgr->GetValueFromKey_str("out-path");
-   std::string bcmCalibPath = jmgr->GetValueFromKey_str("bcm-cc-path");
+   std::string prefix  = jmgr->GetValueFromKey_str("ROOTfile-path");
+   std::string tag     = jmgr->GetValueFromKey_str("tag");
    delete jmgr;
 
-   BCMManager *mgr = new BCMManager("NONE",bcmCalibPath.c_str(),false);
+   char run_path[200],cut_path[200],out_dir[200];
+   sprintf(run_path,"./input/%s/runlist.csv"     ,tag.c_str());
+   sprintf(cut_path,"./input/%s/cuts/cutlist.csv",tag.c_str());
+   sprintf(out_dir ,"./output/%s"                ,tag.c_str());
+
+   BCMManager *mgr = new BCMManager("NONE","NONE",false);
 
    std::vector<codaRun_t> runList;
-   rc = util_df::LoadRunList(run_path.c_str(),prefix.c_str(),runList);
+   rc = util_df::LoadRunList(run_path,prefix.c_str(),runList);
    if(rc!=0) return 1;
 
    util_df::LoadBCMData(runList,mgr);
    if(rc!=0) return 1;
 
    std::vector<cut_t> cutList;
-   rc = bcm_util::LoadCuts(cut_path.c_str(),cutList);
+   rc = bcm_util::LoadCuts(cut_path,cutList);
    if(rc!=0) return 1;
 
    const int N = 7; 
@@ -114,7 +116,7 @@ int bcmCheckCuts(const char *confPath){
       c[i]->Update();
    }
 
-   TGraph *gEPICSCurrent = mgr->GetTGraph("E","time","IBC1H04CRCUR2"); 
+   TGraph *gEPICSCurrent = mgr->GetTGraph("E","event","IBC1H04CRCUR2"); 
    gEPICSCurrent->SetMarkerStyle(20);
 
    // EPICS plots
@@ -123,7 +125,7 @@ int bcmCheckCuts(const char *confPath){
 
    ce->cd();
    gEPICSCurrent->Draw("ap");
-   graph_df::SetLabels(gEPICSCurrent,"","Time [sec]","IBC1H04CRCUR2 [#muA]"); 
+   graph_df::SetLabels(gEPICSCurrent,"","event","IBC1H04CRCUR2 [#muA]"); 
    gEPICSCurrent->Draw("ap");
    ce->Update();  
 

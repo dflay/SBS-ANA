@@ -39,6 +39,12 @@ scriptName = "bcmCalibrateFinal.cxx"
 cmd        = "analyzer -q -b -l '{0}(\"{1}\")''".format(scriptName,jConfPath)
 print(cmd)
 os.system(cmd) 
+# #===============================================================================
+# # compute BCM calibration coefficients for EPICS 
+# scriptName = "bcmCalibrateEPICS.cxx"
+# cmd        = "analyzer -q -b -l '{0}(\"{1}\")''".format(scriptName,jConfPath)
+# print(cmd)
+# os.system(cmd) 
 #===============================================================================
 # cleanup output directory
 outDir = "./output/{0}".format(tag)
