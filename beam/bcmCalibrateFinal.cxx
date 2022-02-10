@@ -49,10 +49,9 @@ int bcmCalibrateFinal(const char *confPath){
    sprintf(data_dir,"./output/%s",tag.c_str());
    sprintf(plot_dir,"./plots/%s" ,tag.c_str());
 
-   const int NF = jmgr->GetValueFromKey<int>("nbcm"); 
    std::vector<double> fitMin,fitMax; 
-   jmgr->GetVectorFromKey<double>("fit-min",NF,fitMin); 
-   jmgr->GetVectorFromKey<double>("fit-max",NF,fitMax); 
+   jmgr->GetVectorFromKey<double>("fit-min",fitMin); 
+   jmgr->GetVectorFromKey<double>("fit-max",fitMax); 
    delete jmgr;
 
    // load Unser data 
