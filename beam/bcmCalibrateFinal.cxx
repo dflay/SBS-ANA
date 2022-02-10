@@ -51,8 +51,8 @@ int bcmCalibrateFinal(const char *confPath){
 
    const int NF = jmgr->GetValueFromKey<int>("nbcm"); 
    std::vector<double> fitMin,fitMax; 
-   jmgr->GetVectorFromKey<double>("fitMin",NF,fitMin); 
-   jmgr->GetVectorFromKey<double>("fitMax",NF,fitMax); 
+   jmgr->GetVectorFromKey<double>("fit-min",NF,fitMin); 
+   jmgr->GetVectorFromKey<double>("fit-max",NF,fitMax); 
    delete jmgr;
 
    // load Unser data 

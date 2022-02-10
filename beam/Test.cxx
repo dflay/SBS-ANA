@@ -111,10 +111,9 @@ int testJSONManager(){
    std::cout << cutFile << std::endl; 
 
    std::vector<double> cc; 
+   jmgr->GetVectorFromKey<double>("calib-coeffs",cc); 
 
-   int NCC = jmgr->GetValueFromKey<int>("ncc"); 
-   jmgr->GetVectorFromKey<double>("calib-coeffs",NCC,cc); 
-
+   int NCC = cc.size(); 
    for(int i=0;i<NCC;i++){
       std::cout << cc[i] << std::endl;
    }

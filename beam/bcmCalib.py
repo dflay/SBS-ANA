@@ -51,7 +51,7 @@ else:
    print("[bcmCalib]: Directory csv already exists")
 # move files to csv directory  
 os.system("mv *.csv csv")
-os.system("mv csv/result* .")  # retrieve the csv output
+os.system("mv csv/result* .")  # retrieve the final result file 
 # move back to home directory 
 os.chdir(homeDir)
 print("[bcmCalib]: Done.")   

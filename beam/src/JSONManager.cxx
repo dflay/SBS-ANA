@@ -37,10 +37,12 @@ std::string JSONManager::GetValueFromSubKey_str(std::string key,std::string subK
    }
 }
 //______________________________________________________________________________
-int JSONManager::GetVectorFromKey_str(std::string key,int N,std::vector<std::string> &data){
+int JSONManager::GetVectorFromKey_str(std::string key,std::vector<std::string> &data){
+   int N=0;
    bool exist = DoesKeyExist(key);
    if(exist){
       // found the key, fill the vector
+      N = fObject[key].size();
       for(int i=0;i<N;i++){
 	 data.push_back(fObject[key][i]);
       }
