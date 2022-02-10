@@ -2,7 +2,12 @@
 // - Uses the output of bcmCalibProcessCuts.cxx
 // - Computes (beam-on) - (beam-off) BCM rates (all variables) 
 //   and plots as a function of the Unser current.
-//   Linear fit produces the calibration coefficients   
+//   Linear fit produces the calibration coefficients  
+//
+//   TODO
+//   1. Add functionality to save the plot (and call to util_df::MakeDirectory)  
+//   2. Create Unser calibration coefficient file
+//   3. Add fit boundaries to config file (unique to each BCM!) 
 
 #include <cstdlib>
 #include <iostream> 
@@ -39,8 +44,11 @@ int bcmCalibrateFinal(const char *confPath){
    std::string dataPath  = jmgr->GetValueFromKey_str("data-path");
    std::string outPath   = jmgr->GetValueFromKey_str("out-path");
    std::string unsccPath = jmgr->GetValueFromKey_str("uns-cc-path"); 
-   double fitMin         = jmgr->GetValueFromKey<double>("fitMin");
-   double fitMax         = jmgr->GetValueFromKey<double>("fitMax");
+
+   const int NF = jmgr->GetValueFromKey<int>("nbcm"); 
+   std::vector<double> fitMin,fitMax; 
+   jmgr->GetVectorFromKey<double>("fitMin",NF,fitMin); 
+   jmgr->GetVectorFromKey<double>("fitMax",NF,fitMax); 
    delete jmgr;
 
    // load Unser data 
@@ -69,6 +77,7 @@ int bcmCalibrateFinal(const char *confPath){
    TF1 **myFit      = new TF1*[N]; 
  
    // set up fit parameters
+   const int npar=2;
    double offset=0,offsetErr=0,slope=0,slopeErr=0; 
 
    // calibration coefficient output 
@@ -84,7 +93,9 @@ int bcmCalibrateFinal(const char *confPath){
    
    std::vector<producedVariable_t> bcm,bcm_ps; 
    for(int i=0;i<N;i++){
+      // load data
       sprintf(inpath,"%s/%s.csv",dataPath.c_str(),bcmVar[i].c_str()); 
+      rc = bcm_util::LoadProducedVariables(inpath,bcm);
       // subtract pedestal
       CalculatePedestalSubtraction(bcm,bcm_ps);
       // create TGraphError plot  
@@ -92,7 +103,7 @@ int bcmCalibrateFinal(const char *confPath){
       graph_df::SetParameters(g[i],20,kBlack);
       // set up the fit function 
       fitName = Form("fit_%s",bcmVar[i].c_str());
-      myFit[i] = new TF1(fitName,myFitFunc,fitMin,fitMax,npar);
+      myFit[i] = new TF1(fitName,myFitFunc,fitMin[i],fitMax[i],npar);
       for(int j=0;j<npar;j++) myFit->SetParameter(j,0);
       // set titles 
       Title      = Form("%s"                  ,bcmVar[i].c_str());
@@ -117,7 +128,10 @@ int bcmCalibrateFinal(const char *confPath){
       ccPt.offsetErr = offsetErr;
       ccPt.slope     = slope;
       ccPt.slopeErr  = slopeErr;
-      cc.push_back(ccPt); 
+      cc.push_back(ccPt);
+      // set up for next BCM
+      bcm.clear();
+      bcm_ps.clear(); 
    }
 
    // save the canvas 
