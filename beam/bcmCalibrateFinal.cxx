@@ -25,6 +25,9 @@
 
 double myFitFunc(double *x,double *p); 
 int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out); 
+int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
+                     std::vector<producedVariable_t> &unser_cur); 
+
 TGraphErrors *GetTGraphErrors(std::vector<producedVariable_t> unser,std::vector<producedVariable_t> bcm); 
 
 int bcmCalibrateFinal(const char *confPath){
@@ -55,7 +58,7 @@ int bcmCalibrateFinal(const char *confPath){
    LoadFittedOffsetGainData(unsccPath.c_str(),unsCC); 
    // convert to current 
    std::vector<producedVariable_t> unser_cur;
-   ConvertToCurrent(unsCC,unser_ps,unser_cur); 
+   ConvertToCurrent(unsCC[0],unser_ps,unser_cur); // only ONE set of unser calibration coefficients!  
 
    // load each BCM variable; compute pedestal-subtracted 
    // values. create plots of ped-subtracted rates vs Unser current 
@@ -125,7 +128,8 @@ int bcmCalibrateFinal(const char *confPath){
    return 0;
 }
 //______________________________________________________________________________
-int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,std::vector<producedVariable_t> &unser_cur){
+int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
+                     std::vector<producedVariable_t> &unser_cur){
 
    double T1=0,T2=0
    double current=0,currentErr=0;
