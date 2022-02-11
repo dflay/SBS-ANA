@@ -126,6 +126,7 @@ int bcmCalibProcessCuts(const char *confPath,const char *bcmName){
    }
 
    if(calcEPICS){
+      std::cout << "**** PROCESSING EPICS VARIABLE " << devNameEPICS << " ****" << std::endl;
       for(int i=0;i<NCE;i++){
 	 // define variable and get a vector of all data  
 	 theVar = devNameEPICS; 
