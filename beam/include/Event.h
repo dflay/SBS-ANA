@@ -5,9 +5,9 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <string>
 
 namespace util_df { 
-
    template <typename T>
       class Event {
 	 private:

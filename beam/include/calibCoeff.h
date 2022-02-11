@@ -2,6 +2,8 @@
 #define UTIL_CALIB_COEFF_H
 
 // a struct to store calibration coefficients 
+#include <cstdlib>
+#include <string> 
 
 typedef struct calibCoeff {
    std::string dev;      // name of device: unser, u1, unew, d1, d3, d10, dnew

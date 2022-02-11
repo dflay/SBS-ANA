@@ -219,6 +219,22 @@ namespace cut_util {
       return 0;
    }
    //______________________________________________________________________________
+   int ApplyCut(cut_t aCut,std::vector<epicsData_t> in,std::vector<epicsData_t> &out){
+      // apply a single cut to data 
+      // // input: 
+      // - aCut: a cut with a min and max range. Must define the variable cut_var in cut struct 
+      // - in: input scaler data 
+      // output: 
+      // - out: scaler data that passed the cuts   
+      const int NEV = in.size();
+      bool passCut=false;
+      for(int i=0;i<NEV;i++){
+	 passCut = PassCut_alt(aCut,in[i]);
+	 if(passCut) out.push_back(in[i]); 
+      }
+      return 0;
+   }
+   //______________________________________________________________________________
    int ApplyCuts_alt(std::vector<cut_t> cutList,std::vector<scalerData_t> in,std::vector<scalerData_t> &out){
       // apply cuts event by event according to a list of cuts
       // use for ONE BCM variable as a function of event number (or other good x axis)
@@ -273,6 +289,20 @@ namespace cut_util {
       return pass; 
    }
    //______________________________________________________________________________
+   bool PassCut_alt(cut_t cut,epicsData_t event){
+      // check to see if the event data passes the cut
+      // based on the variable name in the cut struct, get the associated value 
+
+      // effectively no cut, pass the event
+      if(cut.low==cut.high) return true;
+
+      double val = event.getValue(cut.cut_var); 
+      // check if the event passes the cut  
+      bool pass = false;
+      if( (val>cut.low)&&(val<cut.high) ) pass = true;
+      return pass; 
+   }
+   //______________________________________________________________________________
    int ApplyCuts_alt(std::vector<cut_t> cutList,std::vector<epicsData_t> in,std::vector<epicsData_t> &out){
       // apply cuts event by event according to a list of cuts
       // use for ONE BCM variable as a function of event number (or other good x axis)
@@ -313,50 +343,13 @@ namespace cut_util {
       return 0;
    }
    //______________________________________________________________________________
-   bool PassCut_alt(cut_t cut,epicsData_t event){
-      // check to see if the event data passes the cut
-      // based on the variable name in the cut struct, get the associated value 
-
-      // effectively no cut, pass the event
-      if(cut.low==cut.high) return true; 
-
-      double val = event.getValue(cut.cut_var); 
-      // check if the event passes the cut  
-      bool pass = false;
-      if( (val>cut.low)&&(val<cut.high) ) pass = true;
-      return pass; 
-   }
-   //______________________________________________________________________________
    int ApplyCut(std::string var,double lo,double hi,std::vector<scalerData_t> in,std::vector<scalerData_t> &out){
       // apply a cut to variable "var" with the bounds lo and hi
       // select the entire data struct of type scalerData_t that passes the cut 
       double val=0;
       const int N = in.size();
       for(int i=0;i<N;i++){
-	 if(var.compare("run")==0)            val = in[i].runNumber; 
-	 if(var.compare("event")==0)          val = in[i].event; 
-	 if(var.compare("time")==0)           val = in[i].time; 
-	 if(var.compare("unser.rate")==0)     val = in[i].unserRate; 
-	 if(var.compare("unser.cnt")==0)      val = in[i].unserCounts; 
-	 if(var.compare("unser.current")==0)  val = in[i].unserCurrent; 
-	 if(var.compare("u1.rate")==0)        val = in[i].u1Rate; 
-	 if(var.compare("u1.cnt")==0)         val = in[i].u1Counts; 
-	 if(var.compare("u1.current")==0)     val = in[i].u1Current; 
-	 if(var.compare("unew.rate")==0)      val = in[i].unewRate; 
-	 if(var.compare("unew.cnt")==0)       val = in[i].unewCounts; 
-	 if(var.compare("unew.current")==0)   val = in[i].unewCurrent; 
-	 if(var.compare("d1.rate")==0)        val = in[i].d1Rate; 
-	 if(var.compare("d1.cnt")==0)         val = in[i].d1Counts; 
-	 if(var.compare("d1.current")==0)     val = in[i].d1Current; 
-	 if(var.compare("d3.rate")==0)        val = in[i].d3Rate; 
-	 if(var.compare("d3.cnt")==0)         val = in[i].d3Counts; 
-	 if(var.compare("d3.current")==0)     val = in[i].d3Current; 
-	 if(var.compare("d10.rate")==0)       val = in[i].d10Rate; 
-	 if(var.compare("d10.cnt")==0)        val = in[i].d10Counts; 
-	 if(var.compare("d10.current")==0)    val = in[i].d10Current; 
-	 if(var.compare("dnew.rate")==0)      val = in[i].dnewRate; 
-	 if(var.compare("dnew.cnt")==0)       val = in[i].dnewCounts; 
-	 if(var.compare("dnew.current")==0)   val = in[i].dnewCurrent;
+	 val = in[i].getValue(var); 
 	 // apply the cut 
          if( (val>lo)&&(val<hi) ){
 	    out.push_back(in[i]); 
