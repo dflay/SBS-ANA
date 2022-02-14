@@ -5,7 +5,9 @@ import os
 import sys
 import json
 import csv
-import datetime 
+import datetime
+
+import util 
 
 # read in the configuration file 
 NARG = len(sys.argv) 
@@ -17,7 +19,7 @@ if(NARG<2):
 tag     = sys.argv[1]
 homeDir = os.getcwd()  
 
-startTime = utcNow() 
+startTime = util.utcNow() 
 
 # determine JSON config file path  
 jConfPath = os.getcwd()+ "/input/{0}/conf.json".format(tag)
@@ -36,15 +38,15 @@ for var in varList:
 #===============================================================================
 # compute BCM calibration coefficients
 scriptName = "bcmCalibrate.cxx"
-cmd        = "analyzer -q -b -l '{0}(\"{1}\")''".format(scriptName,jConfPath)
+cmd        = "analyzer -q -b -l '{0}(\"{1}\")'".format(scriptName,jConfPath)
 print(cmd)
 os.system(cmd) 
-# #===============================================================================
-# # compute BCM calibration coefficients for EPICS 
-# scriptName = "bcmCalibrateEPICS.cxx"
-# cmd        = "analyzer -q -b -l '{0}(\"{1}\")''".format(scriptName,jConfPath)
-# print(cmd)
-# os.system(cmd) 
+#===============================================================================
+# compute BCM calibration coefficients for EPICS 
+scriptName = "bcmCalibrateEPICS.cxx"
+cmd        = "analyzer -q -b -l '{0}(\"{1}\")'".format(scriptName,jConfPath)
+print(cmd)
+os.system(cmd) 
 #===============================================================================
 # cleanup output directory
 outDir = "./output/{0}".format(tag)
@@ -57,13 +59,13 @@ else:
    print("[bcmCalib]: Directory csv already exists")
 # move files to csv directory  
 os.system("mv *.csv csv")
-os.system("mv csv/result* .")  # retrieve the final result file 
+os.system("mv csv/*result* .")  # retrieve the final result file 
 # move back to home directory 
 os.chdir(homeDir)
 print("[bcmCalib]: Done.")   
 #===============================================================================
 # compute job stats 
-endTime         = utcNow() 
+endTime         = util.utcNow() 
 elapsedTime     = float(endTime-startTime) 
 elapsedTime_min = elapsedTime/60. 
 print("[bcmCalib]: Elapsed time = {0:.3f} sec ({1:0.3f} min)".format(elapsedTime,elapsedTime_min))

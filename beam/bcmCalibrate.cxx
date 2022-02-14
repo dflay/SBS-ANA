@@ -3,9 +3,6 @@
 // - Computes (beam-on) - (beam-off) BCM rates (all variables) 
 //   and plots as a function of the Unser current.
 //   Linear fit produces the calibration coefficients  
-//
-//   TODO
-//   1. Print fit results to screen  
 
 #include <cstdlib>
 #include <iostream> 
@@ -17,6 +14,8 @@
 #include "TPad.h"
 #include "TLine.h"
 
+#include "./include/scalerData.h"
+#include "./include/epicsData.h"
 #include "./include/producedVariable.h"
 #include "./include/calibCoeff.h"
 #include "./include/codaRun.h"
@@ -24,7 +23,9 @@
 #include "./src/Graph.cxx"
 #include "./src/CSVManager.cxx"
 #include "./src/JSONManager.cxx"
+#include "./src/BCMManager.cxx"
 #include "./src/bcmUtilities.cxx"
+#include "./src/Utilities.cxx"
 
 double myFitFunc(double *x,double *p); 
 int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out); 
@@ -37,19 +38,22 @@ int bcmCalibrate(const char *confPath){
 
    std::cout << "========== COMPUTING BCM CALIBRATION COEFFICIENTS ==========" << std::endl;
 
+   int rc=0;
+
    // load configuration file 
    JSONManager *jmgr = new JSONManager(confPath);
    std::string unsccPath = jmgr->GetValueFromKey_str("unser-cc-path"); 
    std::string tag       = jmgr->GetValueFromKey_str("tag"); 
 
-   char data_dir[200],plot_dir[200];
-   sprintf(data_dir,"./output/%s",tag.c_str());
-   sprintf(plot_dir,"./plots/%s" ,tag.c_str());
-
    std::vector<double> fitMin,fitMax; 
    jmgr->GetVectorFromKey<double>("fit-min",fitMin); 
    jmgr->GetVectorFromKey<double>("fit-max",fitMax); 
    delete jmgr;
+
+   // set up output directory paths
+   char data_dir[200],plot_dir[200];
+   sprintf(data_dir,"./output/%s",tag.c_str());
+   sprintf(plot_dir,"./plots/%s" ,tag.c_str());
 
    // load Unser data 
    char unserPath[200]; 
@@ -58,12 +62,12 @@ int bcmCalibrate(const char *confPath){
    rc = bcm_util::LoadProducedVariables(unserPath,unser);
    if(rc!=0) return 1;
 
-   // compute pedestal subtracted Unser rates, convert to current
+   // compute pedestal-subtracted Unser rates and convert to current
    std::vector<producedVariable_t> unser_ps; 
    CalculatePedestalSubtraction(unser,unser_ps); 
    // load Unser calibration coefficients 
    std::vector<calibCoeff_t> unsCC;
-   LoadFittedOffsetGainData(unsccPath.c_str(),unsCC); 
+   bcm_util::LoadFittedOffsetGainData(unsccPath.c_str(),unsCC); 
    // convert to current 
    std::vector<producedVariable_t> unser_cur;
    ConvertToCurrent(unsCC[0],unser_ps,unser_cur); // only ONE set of unser calibration coefficients!  
@@ -103,15 +107,19 @@ int bcmCalibrate(const char *confPath){
       g[i] = GetTGraphErrors(unser_cur,bcm_ps); 
       graph_df::SetParameters(g[i],20,kBlack);
       // set up the fit function 
-      fitName = Form("fit_%s",bcmVar[i].c_str());
+      fitName  = Form("fit_%s",bcmVar[i].c_str());
       myFit[i] = new TF1(fitName,myFitFunc,fitMin[i],fitMax[i],npar);
-      for(int j=0;j<npar;j++) myFit->SetParameter(j,0);
+      for(int j=0;j<npar;j++){
+	 myFit[i]->SetParameter(j,0);
+         myFit[i]->SetParLimits(j,-10E+3,10E+3);
+      }
       // set titles 
-      Title      = Form("%s"                  ,bcmVar[i].c_str());
-      xAxisTitle = Form("Unser Current [#muA]",bcmVar[i].c_str());
-      yAxisTitle = Form("%s rate [Hz]"        ,bcmVar[i].c_str());
+      Title      = Form("%s",bcmVar[i].c_str());
+      xAxisTitle = Form("Unser Current [#muA]");
+      yAxisTitle = Form("%s rate [Hz]",bcmVar[i].c_str());
       // plot data 
       c1->cd(i+1);  
+      gStyle->SetOptFit(111); 
       g[i]->Draw("ap"); 
       graph_df::SetLabels(g[i],Title,xAxisTitle,yAxisTitle);
       g[i]->Draw("ap");
@@ -158,8 +166,7 @@ int bcmCalibrate(const char *confPath){
 //______________________________________________________________________________
 int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
                      std::vector<producedVariable_t> &unser_cur){
-   double T1=0,T2=0
-   double current=0,currentErr=0;
+   double T1=0,T2=0,current=0,currentErr=0;
    producedVariable_t data;
    const int N = unser_ps.size();
    for(int i=0;i<N;i++){
@@ -167,7 +174,7 @@ int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
       current    = (unser_ps[i].mean - cc.offset)/cc.slope;
       // compute error
       T1         = cc.slope*cc.slope*(unser_ps[i].stdev*unser_ps[i].stdev + cc.offsetErr*cc.offsetErr); 
-      T2         = cc.slopeErr*cc.slopeErr*TMath::Power(unser_ps[i].mean - cc.offset,2.) 
+      T2         = cc.slopeErr*cc.slopeErr*TMath::Power(unser_ps[i].mean - cc.offset,2.);
       currentErr = TMath::Power(1./cc.slope,2.)*TMath::Sqrt(T1 + T2); 
       // save result
       data.mean  = current;
@@ -184,7 +191,7 @@ int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vecto
    // - output: vector of (beam-on) - (beam-off) results (entry for each group/beam current)  
    ABA *myABA = new ABA();
    myABA->UseTimeWeight();
-   myABA->SetVerbosity(1);   
+   // myABA->SetVerbosity(1);   
 
    double mean=0,err=0,stdev=0,argErr=0;
    std::vector<double> w,aba,abaErr; 
@@ -197,7 +204,6 @@ int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vecto
    int grp_prev = data[0].group; // effective beam current  
    const int N = data.size();
    for(int i=0;i<N;i++){
-      std::cout << Form("==== GROUP %d ====",data[i].group) << std::endl;
       // check the group 
       if(data[i].group==grp_prev){
 	 // group match! store data based on beam state 
@@ -212,6 +218,7 @@ int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vecto
 	 }
       }else{
          // new group! compute ABA stats
+	 std::cout << Form("==== GROUP %d ====",grp_prev) << std::endl;
 	 // check 
 	 M = timeOff.size();
 	 for(int j=0;j<M;j++){
@@ -269,6 +276,8 @@ int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vecto
       }
       grp_prev = data[i].group;
    }
+	 
+   std::cout << Form("==== GROUP %d ====",grp_prev) << std::endl;
 
    // get the last index computed 
    M = timeOff.size();

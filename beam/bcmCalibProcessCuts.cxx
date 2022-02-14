@@ -66,7 +66,7 @@ int bcmCalibProcessCuts(const char *confPath,const char *bcmName){
 
    std::vector<cut_t> cutListEPICS; 
    rc = bcm_util::LoadCuts(cut_path_e,cutListEPICS); 
-   if(rc!=0) return 1; 
+   if(rc!=0) return 1;
 
    // get vectors of data 
    std::vector<scalerData_t> raw,data; 
@@ -80,7 +80,7 @@ int bcmCalibProcessCuts(const char *confPath,const char *bcmName){
 
    char var[200]; 
    producedVariable_t aPt;
-   std::vector<producedVariable_t> pVar,pEPICS; 
+   std::vector<producedVariable_t> pVar,pVarEPICS; 
 
    // apply cuts and compute stats  
    const int NC = cutList.size(); 
