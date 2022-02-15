@@ -29,6 +29,8 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/Utilities.cxx"
 
+std::string LOG_PATH="";
+
 double myFitFunc(double *x,double *p); 
 int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out); 
 int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
@@ -38,8 +40,6 @@ TGraphErrors *GetTGraphErrors(std::vector<producedVariable_t> unser,std::vector<
 
 int bcmCalibrateEPICS(const char *confPath){
 
-   std::cout << "========== COMPUTING BCM CALIBRATION COEFFICIENTS [EPICS] ==========" << std::endl;
-
    int rc=0;
 
    // load configuration file 
@@ -47,14 +47,19 @@ int bcmCalibrateEPICS(const char *confPath){
    std::string unsccPath = jmgr->GetValueFromKey_str("unser-cc-path"); 
    std::string tag       = jmgr->GetValueFromKey_str("tag"); 
 
-   char data_dir[200],plot_dir[200];
-   sprintf(data_dir,"./output/%s",tag.c_str());
-   sprintf(plot_dir,"./plots/%s" ,tag.c_str());
-
    std::vector<double> fitMin,fitMax; 
    jmgr->GetVectorFromKey<double>("fit-min-epics",fitMin); 
    jmgr->GetVectorFromKey<double>("fit-max-epics",fitMax); 
    delete jmgr;
+
+   // set up directory output paths 
+   char data_dir[200],plot_dir[200],log_path[200];
+   sprintf(data_dir,"./output/%s",tag.c_str());
+   sprintf(plot_dir,"./output/%s/plots",tag.c_str());
+   sprintf(log_path,"./output/%s/log/calibrate-epics.txt",tag.c_str());
+   LOG_PATH = log_path;
+
+   util_df::LogMessage(log_path,"========== COMPUTING BCM CALIBRATION COEFFICIENTS [EPICS] ==========",'a'); 
 
    // load Unser data 
    char unserPath[200]; 
@@ -95,7 +100,7 @@ int bcmCalibrateEPICS(const char *confPath){
 
    TString Title,xAxisTitle,yAxisTitle,fitName;
 
-   char inpath[200]; 
+   char inpath[200],msg[200]; 
    
    std::vector<producedVariable_t> bcm,bcm_ps; 
    for(int i=0;i<N;i++){
@@ -137,17 +142,18 @@ int bcmCalibrateEPICS(const char *confPath){
       ccPt.slopeErr  = slopeErr;
       cc.push_back(ccPt);
       // print to screen 
-      std::cout << Form("bcm = %s, offset = %.3lf ± %.3lf, slope = %.3lf ± %.3lf",
-                        ccPt.dev.c_str(),ccPt.offset,ccPt.offsetErr,ccPt.slope,ccPt.slopeErr) << std::endl;
+      sprintf(msg,"bcm = %s, offset = %.3lf ± %.3lf, slope = %.3lf ± %.3lf",
+              ccPt.dev.c_str(),ccPt.offset,ccPt.offsetErr,ccPt.slope,ccPt.slopeErr);
+      util_df::LogMessage(log_path,msg,'a'); 
       // set up for next BCM
       bcm.clear();
       bcm_ps.clear(); 
    }
 
-   std::cout << "----------------" << std::endl;
+   util_df::LogMessage(log_path,"----------------",'a');
 
-   // create output directory for plot 
-   util_df::MakeDirectory(plot_dir);
+   // create output directory for plot (done by python!)  
+   // util_df::MakeDirectory(plot_dir);
 
    // save the canvas
    TString plotPath = Form("%s/%s_epics.pdf",plot_dir,tag.c_str()); 
@@ -198,6 +204,8 @@ int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vecto
 
    producedVariable_t aPt; 
 
+   char msg[200]; 
+
    int M=0;
    int grp_prev = data[0].group; // effective beam current  
    const int N = data.size();
@@ -216,15 +224,18 @@ int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vecto
 	 }
       }else{
          // new group! compute ABA stats
-	 std::cout << Form("==== GROUP %d ====",grp_prev) << std::endl;
+	 sprintf(msg,"==== GROUP %d ====",grp_prev);
+	 util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
 	 // check 
 	 M = timeOff.size();
 	 for(int j=0;j<M;j++){
-	    std::cout << Form("off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
-		  timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]) << std::endl;
+	    sprintf(msg,"off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
+		    timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]);
+	    util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
 	 }
 	 if(M==1){
-	    std::cout << "**** ONLY ONE CYCLE! GROUP " << grp_prev << std::endl;
+	    sprintf(msg,"**** ONLY ONE CYCLE! GROUP %d",grp_prev);
+	    util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
 	    // account for one cycle
 	    mean = on[0] - off[0];
 	    err  = TMath::Sqrt( onErr[0]*onErr[0] + offErr[0]*offErr[0] );
@@ -275,20 +286,23 @@ int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vecto
       grp_prev = data[i].group;
    }
 	 
-   std::cout << Form("==== GROUP %d ====",grp_prev) << std::endl;
-
    // get the last index computed 
+   sprintf(msg,"==== GROUP %d ====",grp_prev);
+   util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+
    M = timeOff.size();
    for(int j=0;j<M;j++){
-      std::cout << Form("off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
-            timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]) << std::endl;
+      sprintf(msg,"off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
+            timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]);
+      util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
    }
    // new group; compute ABA stats
    w.clear();
    aba.clear();
    abaErr.clear();
    if(M==1){
-      std::cout << "**** ONLY ONE CYCLE! GROUP " << grp_prev << std::endl;
+      sprintf(msg,"**** ONLY ONE CYCLE! GROUP %d",grp_prev);
+      util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
       // account for one cycle
       mean = on[0] - off[0];
       err  = TMath::Sqrt( onErr[0]*onErr[0] + offErr[0]*offErr[0] );
@@ -327,7 +341,7 @@ TGraphErrors *GetTGraphErrors(std::vector<producedVariable_t> unser,std::vector<
    const int NX = unser.size();
    const int NY = bcm.size();
    if(NX!=NY){
-      std::cout << "[GetTGraphErrors]: ERROR! Unser NPTS != BCM NPTS!" << std::endl;
+      util_df::LogMessage(LOG_PATH.c_str(),"[GetTGraphErrors]: ERROR! Unser NPTS != BCM NPTS!",'a');
       exit(1); 
    }
 

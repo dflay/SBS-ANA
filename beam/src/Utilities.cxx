@@ -166,6 +166,23 @@ namespace util_df {
       return 0;
    }
    //______________________________________________________________________________
+   int LogMessage(const char *outpath,const char *msg,char mode,bool printToScreen){
+      // print a log message to a file
+      ios_base::openmode MODE = std::ofstream::out; 
+      if(mode=='a') MODE = std::ofstream::app;  
+      std::ofstream outfile;
+      outfile.open(outpath,MODE);
+      if( outfile.fail() ){
+	 std::cout << "[util_df::LogMessage]: Cannot open the file: " << outpath << std::endl;
+	 return 1;
+      }else{
+	 if(printToScreen) std::cout << msg << std::endl;
+	 outfile << msg << std::endl;
+	 outfile.close();
+      } 
+      return 0;  
+   }
+   //______________________________________________________________________________
    int GetROOTFileMetaData(const char *rfDirPath,int run,std::vector<int> &data,bool isDebug){
       // determine the beginning and end segment number for a CODA run
       // input: 

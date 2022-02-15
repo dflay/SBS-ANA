@@ -15,4 +15,5 @@ def deleteDir(path):
    shutil.rmtree(path) 
 #_______________________________________________________________________________
 def createDir(path): 
-   os.makedirs(path)
+   if not os.path.exists(path): 
+      os.makedirs(path)

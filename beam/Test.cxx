@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
-#include <string_view>
+// #include <string_view>
 
 #include "TTree.h"
 #include "TFile.h"
@@ -25,6 +25,7 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/ROOTFileManager.cxx"
 
+int testLogMessage(); 
 int testTimeStamp(); 
 int testROOTFileMetaData();
 int testJSONManager(); 
@@ -35,12 +36,18 @@ int Test(){
 
    int rc=0;
    // rc = testROOTFileMetaData();
-   rc = testJSONManager();
+   // rc = testJSONManager();
    // rc = testRDataFrame();
    // rc = testROOTFileManager();
-   // rc = testTimeStamp(); 
+   // rc = testTimeStamp();
+   rc = testLogMessage();  
 
    return 0;
+}
+//______________________________________________________________________________
+int testLogMessage(){
+   int rc = util_df::LogMessage("test.txt","some message that I made up",'a'); 
+   return rc;
 }
 //______________________________________________________________________________
 int testTimeStamp(){

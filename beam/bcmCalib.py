@@ -26,10 +26,18 @@ jConfPath = os.getcwd()+ "/input/{0}/conf.json".format(tag)
 # read JSON config file 
 # confData = json.loads( open(jConfPath).read() )
 
+# create output directories 
+outDir  = os.getcwd() + "/output/{0}".format(tag); 
+logDir  = os.getcwd() + "/output/{0}/log".format(tag); 
+plotDir = os.getcwd() + "/output/{0}/plots/".format(tag); 
+
+util.createDir(outDir)
+util.createDir(logDir)
+util.createDir(plotDir)
+
 #===============================================================================
 # process all cuts (on all BCM variables)  
 varList    = ["unser","u1","unew","d1","d3","d10","dnew"]
-confFile   = "./input/json/bcm-calib_02-05-22.json" # make this an input argument!
 scriptName = "bcmCalibProcessCuts.cxx"
 for var in varList: 
   cmd = "analyzer -q -b -l '{0}(\"{1}\",\"{2}\")'".format(scriptName,jConfPath,var)
@@ -49,7 +57,6 @@ print(cmd)
 os.system(cmd) 
 #===============================================================================
 # cleanup output directory
-outDir = "./output/{0}".format(tag)
 os.chdir(outDir)
 # make csv dir
 if not os.path.exists("./csv"):  

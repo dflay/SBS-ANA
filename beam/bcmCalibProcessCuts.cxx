@@ -31,23 +31,26 @@ int bcmCalibProcessCuts(const char *confPath,const char *bcmName){
    int rc=0;
    std::string devName = bcmName; 
 
-   std::cout << "========== BCM CALIBRATION PROCESS CUTS ==========" << std::endl;
-   std::cout << "Processing cuts for variable: " << devName << std::endl; 
-
    // read input configuration file 
    JSONManager *jmgr = new JSONManager(confPath);
    std::string prefix  = jmgr->GetValueFromKey_str("ROOTfile-path");
    std::string tag     = jmgr->GetValueFromKey_str("tag");
    delete jmgr; 
 
-   char run_path[200],cut_path[200],cut_path_e[200],out_dir[200];
+   char run_path[200],cut_path[200],cut_path_e[200],out_dir[200],log_path[200];
    sprintf(run_path  ,"./input/%s/runlist.csv"           ,tag.c_str());
    sprintf(cut_path  ,"./input/%s/cuts/cutlist.csv"      ,tag.c_str());
    sprintf(cut_path_e,"./input/%s/cuts/cutlist_epics.csv",tag.c_str());
    sprintf(out_dir   ,"./output/%s"                      ,tag.c_str()); 
+   sprintf(log_path  ,"./output/%s/log/process-cuts.txt" ,tag.c_str()); 
 
-   // make output directory
-   util_df::MakeDirectory(out_dir);  
+   std::string msg = "Processing cuts for variable: " + devName; 
+
+   util_df::LogMessage(log_path,"========== BCM CALIBRATION PROCESS CUTS ==========",'a'); 
+   util_df::LogMessage(log_path,msg.c_str(),'a'); 
+
+   // make output directory (done by python code!) 
+   // util_df::MakeDirectory(out_dir);  
 
    // load BCM data
    BCMManager *mgr = new BCMManager("NONE","NONE",false);
@@ -126,7 +129,8 @@ int bcmCalibProcessCuts(const char *confPath,const char *bcmName){
    }
 
    if(calcEPICS){
-      std::cout << "**** PROCESSING EPICS VARIABLE " << devNameEPICS << " ****" << std::endl;
+      msg = "**** PROCESSING EPICS VARIABLE " + devNameEPICS + " ****";
+      util_df::LogMessage(log_path,msg.c_str(),'a'); 
       for(int i=0;i<NCE;i++){
 	 // define variable and get a vector of all data  
 	 theVar = devNameEPICS; 
