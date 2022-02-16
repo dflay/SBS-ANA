@@ -24,16 +24,12 @@
 #include "./src/CSVManager.cxx"
 #include "./src/JSONManager.cxx"
 #include "./src/BCMManager.cxx"
-#include "./src/bcmUtilities.cxx"
 #include "./src/Utilities.cxx"
+#include "./src/bcmUtilities.cxx"
 
 std::string LOG_PATH="";
 
 double myFitFunc(double *x,double *p); 
-int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out); 
-int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
-                     std::vector<producedVariable_t> &unser_cur); 
-
 TGraphErrors *GetTGraphErrors(std::vector<producedVariable_t> unser,std::vector<producedVariable_t> bcm); 
 
 int bcmCalibrate(const char *confPath){
@@ -51,11 +47,13 @@ int bcmCalibrate(const char *confPath){
    delete jmgr;
 
    // set up output directory paths
-   char data_dir[200],plot_dir[200],log_path[200];
+   char data_dir[200],plot_dir[200],log_path[200],plt_path[200];
    sprintf(data_dir,"./output/%s"                  ,tag.c_str());
    sprintf(log_path,"./output/%s/log/calibrate.txt",tag.c_str()); 
    sprintf(plot_dir,"./output/%s/plots"            ,tag.c_str());
-   LOG_PATH = log_path; 
+   LOG_PATH = log_path;
+   
+   std::string PLOT_PATH=""; 
    
    util_df::LogMessage(log_path,"========== COMPUTING BCM CALIBRATION COEFFICIENTS ==========",'a');
 
@@ -67,14 +65,16 @@ int bcmCalibrate(const char *confPath){
    if(rc!=0) return 1;
 
    // compute pedestal-subtracted Unser rates and convert to current
-   std::vector<producedVariable_t> unser_ps; 
-   CalculatePedestalSubtraction(unser,unser_ps); 
+   std::vector<producedVariable_t> unser_ps;
+   sprintf(plt_path,"%s/unser.pdf",plot_dir); 
+   PLOT_PATH = plt_path; 
+   bcm_util::CalculatePedestalSubtraction(unser,unser_ps,LOG_PATH,PLOT_PATH); 
    // load Unser calibration coefficients 
    std::vector<calibCoeff_t> unsCC;
    bcm_util::LoadFittedOffsetGainData(unsccPath.c_str(),unsCC); 
    // convert to current 
    std::vector<producedVariable_t> unser_cur;
-   ConvertToCurrent(unsCC[0],unser_ps,unser_cur); // only ONE set of unser calibration coefficients!  
+   bcm_util::ConvertToCurrent(unsCC[0],unser_ps,unser_cur); // only ONE set of unser calibration coefficients!  
 
    // load each BCM variable; compute pedestal-subtracted 
    // values. create plots of ped-subtracted rates vs Unser current 
@@ -98,15 +98,21 @@ int bcmCalibrate(const char *confPath){
 
    TString Title,xAxisTitle,yAxisTitle,fitName;
 
-   char inpath[200],msg[200]; 
+   char inpath[200],outpath[200],msg[200]; 
    
-   std::vector<producedVariable_t> bcm,bcm_ps; 
+   std::vector<producedVariable_t> bcm,bcm_ps,bcm_off; 
    for(int i=0;i<N;i++){
       // load data
       sprintf(inpath,"%s/%s.csv",data_dir,bcmVar[i].c_str()); 
       rc = bcm_util::LoadProducedVariables(inpath,bcm);
+      // compute pedestal rates
+      bcm_util::CalculateStatsForBeamState("off",bcm,bcm_off,LOG_PATH);
+      sprintf(outpath,"%s/%s_ped.csv",data_dir,bcmVar[i].c_str());
+      bcm_util::WriteToFile(outpath,bcm_off);  
       // subtract pedestal
-      CalculatePedestalSubtraction(bcm,bcm_ps);
+      sprintf(plt_path,"%s/%s.pdf",plot_dir,bcmVar[i].c_str()); 
+      PLOT_PATH = plt_path;
+      bcm_util::CalculatePedestalSubtraction(bcm,bcm_ps,LOG_PATH,PLOT_PATH);
       // create TGraphError plot  
       g[i] = GetTGraphErrors(unser_cur,bcm_ps); 
       graph_df::SetParameters(g[i],20,kBlack);
@@ -149,12 +155,10 @@ int bcmCalibrate(const char *confPath){
       // set up for next BCM
       bcm.clear();
       bcm_ps.clear(); 
+      bcm_off.clear(); 
    }
 
    util_df::LogMessage(log_path,"----------------",'a');
-
-   // create output directory for plot (created by python script!)  
-   // util_df::MakeDirectory(plot_dir);
 
    // save the canvas
    TString plotPath = Form("%s/%s.pdf",plot_dir,tag.c_str()); 
@@ -162,176 +166,8 @@ int bcmCalibrate(const char *confPath){
    c1->Print(plotPath);  
 
    // print results to file
-   char outpath[200];
    sprintf(outpath,"%s/result.csv",data_dir); 
    bcm_util::WriteToFile_cc(outpath,cc);  
-
-   return 0;
-}
-//______________________________________________________________________________
-int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
-                     std::vector<producedVariable_t> &unser_cur){
-   double T1=0,T2=0,current=0,currentErr=0;
-   producedVariable_t data;
-   const int N = unser_ps.size();
-   for(int i=0;i<N;i++){
-      // compute current 
-      current    = (unser_ps[i].mean - cc.offset)/cc.slope;
-      // compute error
-      T1         = cc.slope*cc.slope*(unser_ps[i].stdev*unser_ps[i].stdev + cc.offsetErr*cc.offsetErr); 
-      T2         = cc.slopeErr*cc.slopeErr*TMath::Power(unser_ps[i].mean - cc.offset,2.);
-      currentErr = TMath::Power(1./cc.slope,2.)*TMath::Sqrt(T1 + T2); 
-      // save result
-      data.mean  = current;
-      data.stdev = currentErr;
-      unser_cur.push_back(data); 
-   }
-   return 0;
-}
-//______________________________________________________________________________
-int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out){
-   // compute pedestal-subtracted rates 
-   // utilizes ABA method to account for zero-point drift
-   // - input:  vector of beam-on and beam-off data (each entry for beam on and off for a given group/beam current) 
-   // - output: vector of (beam-on) - (beam-off) results (entry for each group/beam current)  
-   ABA *myABA = new ABA();
-   myABA->UseTimeWeight();
-   // myABA->SetVerbosity(1);   
-
-   double mean=0,err=0,stdev=0,argErr=0;
-   std::vector<double> w,aba,abaErr; 
-   std::vector<double> timeOn,on,onErr;
-   std::vector<double> timeOff,off,offErr;
-
-   producedVariable_t aPt; 
-
-   char msg[200]; 
-
-   int M=0;
-   int grp_prev = data[0].group; // effective beam current  
-   const int N = data.size();
-   for(int i=0;i<N;i++){
-      // check the group 
-      if(data[i].group==grp_prev){
-	 // group match! store data based on beam state 
-	 if(data[i].beam_state.compare("on")==0){
-	    timeOn.push_back( data[i].time );
-	    on.push_back( data[i].mean );
-	    onErr.push_back( data[i].stdev );
-	 }else if(data[i].beam_state.compare("off")==0){
-	    timeOff.push_back( data[i].time );
-	    off.push_back( data[i].mean );
-	    offErr.push_back( data[i].stdev );
-	 }
-      }else{
-         // new group! compute ABA stats
-	 sprintf(msg,"==== GROUP %d ====",grp_prev);
-	 util_df::LogMessage(LOG_PATH.c_str(),msg,'a'); 
-	 // check 
-	 M = timeOff.size();
-	 for(int j=0;j<M;j++){
-	    sprintf(msg,"off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
-		  timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]);
-	    util_df::LogMessage(LOG_PATH.c_str(),msg,'a'); 
-	 }
-	 if(M==1){
-	    sprintf(msg,"**** ONLY ONE CYCLE! GROUP %d",grp_prev);
-	    util_df::LogMessage(LOG_PATH.c_str(),msg,'a'); 
-	    // account for one cycle
-	    mean = on[0] - off[0];
-	    err  = TMath::Sqrt( onErr[0]*onErr[0] + offErr[0]*offErr[0] );
-	    stdev = err;
-	 }else{
-	    // compute ABA stats
-	    myABA->GetDifference(timeOff,off,offErr,timeOn,on,onErr,aba,abaErr);
-	    M = aba.size();
-	    for(int j=0;j<M;j++){
-	       argErr = abaErr[j]*abaErr[j];
-	       if(abaErr[j]!=0){
-		  w.push_back(1./argErr);
-	       }else{
-		  w.push_back(1);
-	       }
-	    }
-	    // compute the weighted mean
-	    math_df::GetWeightedMean<double>(aba,w,mean,err);
-	    stdev = math_df::GetStandardDeviation<double>(aba);
-	    // we compute (A-B), but we actually want B-A
-	    mean *= -1;
-	 }
-         // store results
-         aPt.mean  = mean;
-	 aPt.stdev = stdev;
-         out.push_back(aPt);
-	 // set up for next
-	 w.clear();
-	 aba.clear();
-	 abaErr.clear();
-	 timeOn.clear();
-	 on.clear(); 
-	 onErr.clear(); 
-	 timeOff.clear();
-	 off.clear(); 
-	 offErr.clear(); 
-         // store this one since it's needed for the next set!  
-	 if(data[i].beam_state.compare("on")==0){
-	    timeOn.push_back( data[i].time );
-	    on.push_back( data[i].mean );
-	    onErr.push_back( data[i].stdev );
-	 }else if(data[i].beam_state.compare("off")==0){
-	    timeOff.push_back( data[i].time );
-	    off.push_back( data[i].mean );
-	    offErr.push_back( data[i].stdev );
-	 }
-      }
-      grp_prev = data[i].group;
-   }
-	 
-   // get the last index computed 
-   sprintf(msg,"==== GROUP %d ====",grp_prev);
-   util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
-
-   M = timeOff.size();
-   for(int j=0;j<M;j++){
-      sprintf(msg,"off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
-            timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]);
-      util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
-   }
-   // compute ABA stats
-   w.clear();
-   aba.clear();
-   abaErr.clear();
-   if(M==1){
-      sprintf(msg,"**** ONLY ONE CYCLE! GROUP %d",grp_prev);
-      util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
-      // account for one cycle
-      mean = on[0] - off[0];
-      err  = TMath::Sqrt( onErr[0]*onErr[0] + offErr[0]*offErr[0] );
-      stdev = err;
-   }else{
-      // compute ABA stats
-      myABA->GetDifference(timeOff,off,offErr,timeOn,on,onErr,aba,abaErr);
-      M = aba.size();
-      for(int j=0;j<M;j++){
-	 argErr = abaErr[j]*abaErr[j];
-	 if(abaErr[j]!=0){
-	    w.push_back(1./argErr);
-	 }else{
-	    w.push_back(1);
-	 }
-      }
-      // compute the weighted mean
-      math_df::GetWeightedMean<double>(aba,w,mean,err);
-      stdev = math_df::GetStandardDeviation<double>(aba);
-      // we compute (A-B), but we actually want B-A
-      mean *= -1;
-   }
-   // store results
-   aPt.mean  = mean;
-   aPt.stdev = stdev;
-   out.push_back(aPt);
-
-   delete myABA; 
 
    return 0;
 }

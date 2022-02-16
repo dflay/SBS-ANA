@@ -2,7 +2,7 @@
 #define UTIL_BCM_H 
 
 // a namespace for helpful functions useful in 
-// beam data analysis 
+// beam charge/current monitor (BCM) data analysis  
 
 #include <cstdlib>
 #include <iostream>
@@ -28,7 +28,14 @@ namespace bcm_util {
    int LoadCuts(const char *inpath,std::vector<cut_t> &data);
    int ApplyCuts(double cutLo,double cutHi,std::vector<double> x,std::vector<double> y,std::vector<double> &out); 
    int GetStatsWithCuts(std::vector<double> x,std::vector<double> y,
-                        double cutLo,double cutHi,double &mean,double &stdev); 
+                        double cutLo,double cutHi,double &mean,double &stdev);
+   int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
+	                std::vector<producedVariable_t> &unser_cur);
+
+   int CalculateStatsForBeamState(std::string beamState,std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out,
+                                  std::string LOG_PATH); 
+   int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out,
+                                    std::string LOG_PATH="NONE",std::string PLOT_PATH="NONE"); 
    int SubtractBaseline(std::vector<producedVariable_t> on,std::vector<producedVariable_t> off, 
                         std::vector<producedVariable_t> &diff,bool isDebug=false);
 

@@ -478,6 +478,344 @@ namespace bcm_util {
       return 0;
    }
    //______________________________________________________________________________
+   int ConvertToCurrent(calibCoeff_t cc,std::vector<producedVariable_t> unser_ps,
+	                std::vector<producedVariable_t> &unser_cur){
+      double T1=0,T2=0,current=0,currentErr=0;
+      producedVariable_t data;
+      const int N = unser_ps.size();
+      for(int i=0;i<N;i++){
+	 // compute current 
+	 current    = (unser_ps[i].mean - cc.offset)/cc.slope;
+	 // compute error
+	 T1         = cc.slope*cc.slope*(unser_ps[i].stdev*unser_ps[i].stdev + cc.offsetErr*cc.offsetErr);
+	 T2         = cc.slopeErr*cc.slopeErr*TMath::Power(unser_ps[i].mean - cc.offset,2.);
+	 currentErr = TMath::Power(1./cc.slope,2.)*TMath::Sqrt(T1 + T2);
+	 // save result
+	 data.mean  = current;
+	 data.stdev = currentErr;
+	 unser_cur.push_back(data);
+      }
+      return 0;
+   }
+   //______________________________________________________________________________
+   int CalculateStatsForBeamState(std::string beamState,std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out,
+                         std::string LOG_PATH){
+      // compute the stats averaged over all cycles per group for a given beam state 
+      // - input
+      //   - vector of beam-on and beam-off data (alternates between on and off data; also has a given group/beam current) 
+      //   - LOG_PATH: print screen messages named LOG_PATH (if not NONE) 
+      // - output
+      //   - vector of beam-off data, averaged over all cycles per group 
+
+      char msg[200];
+      producedVariable_t aPt;
+      std::vector<double> time,v,dv,w;
+      double mean=0,err=0,stdev=0,argErr=0; 
+   
+      sprintf(msg,"Calculating stats for bcm: %s, beam state: %s",data[0].dev.c_str(),beamState.c_str()); 
+      if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a'); 
+ 
+      int M=0; 
+      int grp_prev = data[0].group; 
+      std::string dev_prev = data[0].dev;  
+      const int N = data.size(); 
+      for(int i=0;i<N;i++){
+	 // check the group 
+	 if(data[i].group==grp_prev){
+	    if(data[i].beam_state.compare(beamState)==0){
+	       time.push_back(data[i].time);
+	       v.push_back(data[i].mean); 
+	       dv.push_back(data[i].stdev); 
+	    }
+	 }else{
+	    // new group
+	    sprintf(msg,"==== GROUP %d ====",grp_prev);
+	    if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+	    M = v.size();
+	    for(int j=0;j<M;j++){
+	       sprintf(msg,"time = %.3lf, value = %.3E, err = %.3E",time[j],v[j],dv[j]); 
+	       if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+            }
+	    // compute stats
+	    for(int j=0;j<M;j++){
+	       argErr = dv[j]*dv[j];
+	       if(dv[j]!=0){
+		  w.push_back(1./argErr);
+	       }else{
+		  w.push_back(1);
+	       }
+	    }
+	    // compute the weighted mean
+	    math_df::GetWeightedMean<double>(v,w,mean,err);
+	    stdev = math_df::GetStandardDeviation<double>(v);
+	    // save result 
+	    aPt.dev   = dev_prev; 
+            aPt.beam_state = beamState; 
+	    aPt.time  = time[0]; // keep first time stamp  
+	    aPt.mean  = mean; 
+	    aPt.stdev = stdev;
+	    out.push_back(aPt); 
+	    sprintf(msg,"--> time = %.3lf, mean = %.3E, stdev = %.3E",aPt.time,aPt.mean,aPt.stdev);
+	    if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+            // set up for next group 
+            w.clear();
+	    time.clear();
+            v.clear();
+            dv.clear();  
+	    // save the current one since we'll need it 
+	    if(data[i].beam_state.compare(beamState)==0){
+	       time.push_back(data[i].time);
+	       v.push_back(data[i].mean); 
+	       dv.push_back(data[i].stdev);
+	    } 
+         }
+	 grp_prev = data[i].group;
+	 dev_prev = data[i].dev;  
+      } 
+
+      // get the last one
+      sprintf(msg,"==== GROUP %d ====",grp_prev);
+      if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+      M = v.size();
+      for(int j=0;j<M;j++){
+	 sprintf(msg,"time = %.3lf, value = %.3E, err = %.3E",time[j],v[j],dv[j]); 
+	 if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+      }
+      // compute stats
+      for(int j=0;j<M;j++){
+	 argErr = dv[j]*dv[j];
+	 if(dv[j]!=0){
+	    w.push_back(1./argErr);
+	 }else{
+	    w.push_back(1);
+	 }
+      }
+      // compute the weighted mean
+      math_df::GetWeightedMean<double>(v,w,mean,err);
+      stdev = math_df::GetStandardDeviation<double>(v);
+      // save result
+      aPt.dev   = dev_prev; 
+      aPt.beam_state = beamState;  
+      aPt.time  = time[0]; // keep first time stamp  
+      aPt.mean  = mean; 
+      aPt.stdev = stdev;
+      out.push_back(aPt); 
+      sprintf(msg,"--> time = %.3lf, mean = %.3E, stdev = %.3E",aPt.time,aPt.mean,aPt.stdev);
+      if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+
+      return 0;
+   }
+   //______________________________________________________________________________
+   int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out,
+                                    std::string LOG_PATH,std::string PLOT_PATH){
+      // compute pedestal-subtracted rates 
+      // utilizes ABA method to account for zero-point drift
+      // - input:  
+      //   - vector of beam-on and beam-off data (alternates between on and off data; also has a given group/beam current)
+      //   - LOG_PATH:  print screen messages to file named LOG_PATH (if not NONE) 
+      //   - PLOT_PATH: print plots to file named PLOT_PATH (if not NONE) 
+      // - output: vector of (beam-on) - (beam-off) results (entry for each group/beam current)  
+      ABA *myABA = new ABA();
+      myABA->UseTimeWeight();
+      // myABA->SetVerbosity(1);   
+
+      char msg[200];
+      double mean=0,err=0,stdev=0,argErr=0;
+      std::vector<double> w,aba,abaErr;
+      std::vector<double> timeOn,on,onErr;
+      std::vector<double> timeOff,off,offErr;
+
+      producedVariable_t aPt;
+
+      // int NG = data.size()/2; // for each group, we have beam on and off => divide N by 2 to get number of groups 
+
+      // find number of groups 
+      const int N = data.size();
+      std::vector<int> grp; 
+      for(int i=0;i<N;i++) grp.push_back( data[i].group ); 
+      std::sort(grp.begin(),grp.end()); 
+      auto last = std::unique(grp.begin(),grp.end());
+      grp.erase(last,grp.end());
+      int NG = grp.size(); 
+
+      int NROW=2;
+      int NCOL=NG/2; 
+      TCanvas *cp = new TCanvas("cp","Pedestal Subtraction",1200,800);
+      cp->Divide(NCOL,NROW); 
+
+      sprintf(msg,"[bcmUtilities::CalculatePedestalSubtraction]: Processing %d groups",NG);    
+      util_df::LogMessage(LOG_PATH.c_str(),msg,'a'); 
+
+      // create graph object for each group 
+      TGraphErrors **gOff = new TGraphErrors*[NG]; 
+      TGraphErrors **gOn  = new TGraphErrors*[NG];
+      TMultiGraph **mg    = new TMultiGraph*[NG];  
+
+      int M=0,k=0;
+      int grp_prev = data[0].group; // effective beam current 
+      std::string dev_prev = data[0].dev;  
+      for(int i=0;i<N;i++){
+	 // check the group 
+	 if(data[i].group==grp_prev){
+	    // group match! store data based on beam state 
+	    if(data[i].beam_state.compare("on")==0){
+	       timeOn.push_back( data[i].time );
+	       on.push_back( data[i].mean );
+	       onErr.push_back( data[i].stdev );
+	    }else if(data[i].beam_state.compare("off")==0){
+	       timeOff.push_back( data[i].time );
+	       off.push_back( data[i].mean );
+	       offErr.push_back( data[i].stdev );
+	    }
+	 }else{
+	    // new group! compute ABA stats
+	    sprintf(msg,"==== GROUP %d ====",grp_prev);
+	    if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+	    // check 
+	    M = timeOff.size();
+	    for(int j=0;j<M;j++){
+	       sprintf(msg,"off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
+		     timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]);
+	       if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+	    }
+	    if(M==1){
+	       sprintf(msg,"**** ONLY ONE CYCLE! GROUP %d",grp_prev);
+	       if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+	       // account for one cycle
+	       mean = on[0] - off[0];
+	       err  = TMath::Sqrt( onErr[0]*onErr[0] + offErr[0]*offErr[0] );
+	       stdev = err;
+	    }else{
+	       // compute ABA stats
+	       myABA->GetDifference(timeOff,off,offErr,timeOn,on,onErr,aba,abaErr);
+	       M = aba.size();
+	       for(int j=0;j<M;j++){
+		  argErr = abaErr[j]*abaErr[j];
+		  if(abaErr[j]!=0){
+		     w.push_back(1./argErr);
+		  }else{
+		     w.push_back(1);
+		  }
+	       }
+	       // compute the weighted mean
+	       math_df::GetWeightedMean<double>(aba,w,mean,err);
+	       stdev = math_df::GetStandardDeviation<double>(aba);
+	       // we compute (A-B), but we actually want B-A
+	       mean *= -1;
+	    }
+	    // store results
+	    aPt.mean  = mean;
+	    aPt.stdev = stdev;
+	    out.push_back(aPt);
+            // make a plot
+            gOff[k] = graph_df::GetTGraphErrors(timeOff,off,offErr);  
+            gOn[k]  = graph_df::GetTGraphErrors(timeOn , on,onErr); 
+            graph_df::SetParameters(gOff[k],20,kBlack);  
+            graph_df::SetParameters(gOn[k] ,21,kRed);
+	    mg[k] = new TMultiGraph(); 
+            mg[k]->Add(gOff[k],"lp");  
+            mg[k]->Add(gOn[k] ,"lp"); 
+            cp->cd(k+1); 
+            mg[k]->Draw("a"); 
+            graph_df::SetLabels(mg[k],Form("Group %d",grp_prev),"Time",Form("%s",dev_prev.c_str())); 
+            mg[k]->Draw("a"); 
+            cp->Update();  
+	    // increment plotter index 
+	    k++;
+	    // set up for next
+	    w.clear();
+	    aba.clear();
+	    abaErr.clear();
+	    timeOn.clear();
+	    on.clear();
+	    onErr.clear();
+	    timeOff.clear();
+	    off.clear();
+	    offErr.clear();
+	    // store this one since it's needed for the next set!  
+	    if(data[i].beam_state.compare("on")==0){
+	       timeOn.push_back( data[i].time );
+	       on.push_back( data[i].mean );
+	       onErr.push_back( data[i].stdev );
+	    }else if(data[i].beam_state.compare("off")==0){
+	       timeOff.push_back( data[i].time );
+	       off.push_back( data[i].mean );
+	       offErr.push_back( data[i].stdev );
+	    }
+	 }
+	 grp_prev = data[i].group;
+	 dev_prev = data[i].dev;  
+      }
+      // get the last index computed 
+      sprintf(msg,"==== GROUP %d ====",grp_prev);
+      if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+
+      M = timeOff.size();
+      for(int j=0;j<M;j++){
+	 sprintf(msg,"off: %.3lf, %.3lf ± %.3lf; on: %.3lf, %.3lf ± %.3lf",
+	       timeOff[j],off[j],offErr[j],timeOn[j],on[j],onErr[j]);
+	 if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+      }
+
+      // make a plot 
+      gOff[k] = graph_df::GetTGraphErrors(timeOff,off,offErr);  
+      gOn[k]  = graph_df::GetTGraphErrors(timeOn , on,onErr); 
+      graph_df::SetParameters(gOff[k],20,kBlack);  
+      graph_df::SetParameters(gOn[k] ,21,kRed); 
+      mg[k] = new TMultiGraph(); 
+      mg[k]->Add(gOff[k],"lp");  
+      mg[k]->Add(gOn[k] ,"lp"); 
+      cp->cd(k+1); 
+      mg[k]->Draw("a"); 
+      graph_df::SetLabels(mg[k],Form("Group %d",grp_prev),"Time",Form("%s",dev_prev.c_str())); 
+      mg[k]->Draw("a"); 
+      cp->Update();  
+
+      // save canvas if necessary 
+      if(PLOT_PATH.compare("NONE")!=0){
+	 cp->Print(PLOT_PATH.c_str());
+      }
+
+      // compute ABA stats
+      w.clear();
+      aba.clear();
+      abaErr.clear();
+      if(M==1){
+	 sprintf(msg,"**** ONLY ONE CYCLE! GROUP %d",grp_prev);
+	 if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+	 // account for one cycle
+	 mean = on[0] - off[0];
+	 err  = TMath::Sqrt( onErr[0]*onErr[0] + offErr[0]*offErr[0] );
+	 stdev = err;
+      }else{
+	 // compute ABA stats
+	 myABA->GetDifference(timeOff,off,offErr,timeOn,on,onErr,aba,abaErr);
+	 M = aba.size();
+	 for(int j=0;j<M;j++){
+	    argErr = abaErr[j]*abaErr[j];
+	    if(abaErr[j]!=0){
+	       w.push_back(1./argErr);
+	    }else{
+	       w.push_back(1);
+	    }
+	 }
+	 // compute the weighted mean
+	 math_df::GetWeightedMean<double>(aba,w,mean,err);
+	 stdev = math_df::GetStandardDeviation<double>(aba);
+	 // we compute (A-B), but we actually want B-A
+	 mean *= -1;
+      }
+      // store results
+      aPt.mean  = mean;
+      aPt.stdev = stdev;
+      out.push_back(aPt);
+
+      delete myABA;
+      delete cp; 
+
+      return 0;
+   }
+   //______________________________________________________________________________
    int SubtractBaseline(std::vector<producedVariable_t> on,std::vector<producedVariable_t> off, 
                         std::vector<producedVariable_t> &diff,bool isDebug){
       // compute the quantity (beam-on) - (beam-off) for all variables

@@ -31,8 +31,11 @@ outDir  = os.getcwd() + "/output/{0}".format(tag);
 logDir  = os.getcwd() + "/output/{0}/log".format(tag); 
 plotDir = os.getcwd() + "/output/{0}/plots/".format(tag); 
 
+print( "[bcmCalib]: Creating directory '{0}'".format(outDir) ) 
 util.createDir(outDir)
+print( "[bcmCalib]: Creating directory '{0}'".format(logDir) ) 
 util.createDir(logDir)
+print( "[bcmCalib]: Creating directory '{0}'".format(plotDir) ) 
 util.createDir(plotDir)
 
 #===============================================================================
