@@ -86,7 +86,7 @@ int bcmCalibrate(const char *confPath){
  
    // set up fit parameters
    const int npar=2;
-   double offset=0,offsetErr=0,slope=0,slopeErr=0; 
+   double mean_ped=0,stdev_ped=0,offset=0,offsetErr=0,slope=0,slopeErr=0; 
 
    // calibration coefficient output 
    calibCoeff_t ccPt; 
@@ -106,7 +106,7 @@ int bcmCalibrate(const char *confPath){
       sprintf(inpath,"%s/%s.csv",data_dir,bcmVar[i].c_str()); 
       rc = bcm_util::LoadProducedVariables(inpath,bcm);
       // compute pedestal rates
-      bcm_util::CalculateStatsForBeamState("off",bcm,bcm_off,LOG_PATH);
+      bcm_util::CalculateStatsForBeamState("off",bcm,bcm_off,mean_ped,stdev_ped,LOG_PATH);
       sprintf(outpath,"%s/%s_ped.csv",data_dir,bcmVar[i].c_str());
       bcm_util::WriteToFile(outpath,bcm_off);  
       // subtract pedestal
@@ -142,15 +142,17 @@ int bcmCalibrate(const char *confPath){
       slope     = myFit[i]->GetParameter(1); 
       slopeErr  = myFit[i]->GetParError(1); 
       // store results 
-      ccPt.dev       = bcmVar[i];
-      ccPt.offset    = offset; 
-      ccPt.offsetErr = offsetErr;
-      ccPt.slope     = slope;
-      ccPt.slopeErr  = slopeErr;
+      ccPt.dev         = bcmVar[i];
+      ccPt.pedestal    = mean_ped;  // averaged over all cycles and groups  
+      ccPt.pedestalErr = stdev_ped;
+      ccPt.offset      = offset; 
+      ccPt.offsetErr   = offsetErr;
+      ccPt.slope       = slope;
+      ccPt.slopeErr    = slopeErr;
       cc.push_back(ccPt);
       // print to screen 
-      sprintf(msg,"bcm = %s, offset = %.3E ± %.3E, slope = %.3E ± %.3E",
-                        ccPt.dev.c_str(),ccPt.offset,ccPt.offsetErr,ccPt.slope,ccPt.slopeErr);
+      sprintf(msg,"bcm = %s, pedestal = %.3E ± %.3E, offset = %.3E ± %.3E, slope = %.3E ± %.3E",
+                        ccPt.dev.c_str(),ccPt.pedestal,ccPt.pedestalErr,ccPt.offset,ccPt.offsetErr,ccPt.slope,ccPt.slopeErr);
       util_df::LogMessage(log_path,msg,'a'); 
       // set up for next BCM
       bcm.clear();

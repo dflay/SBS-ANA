@@ -59,6 +59,12 @@ cmd        = "analyzer -q -b -l '{0}(\"{1}\")'".format(scriptName,jConfPath)
 print(cmd)
 os.system(cmd) 
 #===============================================================================
+# create DB files 
+scriptName = "bcmCalibDBFiles.cxx"
+cmd        = "analyzer -q -b -l '{0}(\"{1}\")'".format(scriptName,jConfPath)
+print(cmd)
+os.system(cmd) 
+#===============================================================================
 # cleanup output directory
 os.chdir(outDir)
 # make csv dir

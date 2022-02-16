@@ -20,6 +20,7 @@ namespace bcm_util {
    int GetData(std::string var,std::vector<producedVariable_t> data,std::vector<double> &x,std::vector<double> &dx); 
    int WriteToFile(const char *outpath,std::vector<producedVariable_t> data); 
    int WriteToFile_cc(const char *outpath,std::vector<calibCoeff_t> data);
+   int LoadCalibrationCoefficients(const char *inpath,std::vector<calibCoeff_t> &data); 
    int LoadFittedOffsetGainData(const char *inpath,std::vector<calibCoeff_t> &data); 
    int LoadPedestalData(const char *inpath,std::vector<calibCoeff_t> &data); 
    int LoadProducedVariables(const char *inpath,std::vector<producedVariable_t> &data);
@@ -33,7 +34,7 @@ namespace bcm_util {
 	                std::vector<producedVariable_t> &unser_cur);
 
    int CalculateStatsForBeamState(std::string beamState,std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out,
-                                  std::string LOG_PATH); 
+                                  double &MEAN,double &STDEV,std::string LOG_PATH); 
    int CalculatePedestalSubtraction(std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out,
                                     std::string LOG_PATH="NONE",std::string PLOT_PATH="NONE"); 
    int SubtractBaseline(std::vector<producedVariable_t> on,std::vector<producedVariable_t> off, 

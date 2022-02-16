@@ -251,6 +251,46 @@ namespace bcm_util {
       return 0;
    }
    //______________________________________________________________________________
+   int LoadCalibrationCoefficients(const char *inpath,std::vector<calibCoeff_t> &data){
+      // load calibration coefficients from BCM or Unser calibration analysis  
+      // note: this is a component of a calibCoeff data type,
+      // so we fill a vector of calibCoeff structs
+      CSVManager *csv = new CSVManager(); 
+      int rc = csv->ReadFile(inpath,true); 
+      if(rc!=0){
+	 delete csv;
+	 return 1;
+      }
+     
+      // grab the data we want 
+      std::vector<std::string> dev;
+      std::vector<double> ped,pedErr,offset,offsetErr,gain,gainErr; 
+      csv->GetColumn_byName_str("dev",dev); 
+      csv->GetColumn_byName<double>("pedestal"   ,ped);  
+      csv->GetColumn_byName<double>("pedestalErr",pedErr);  
+      csv->GetColumn_byName<double>("offset"   ,offset);  
+      csv->GetColumn_byName<double>("offsetErr",offsetErr);  
+      csv->GetColumn_byName<double>("gain"     ,gain); 
+      csv->GetColumn_byName<double>("gainErr"  ,gainErr);
+
+      // fill a vector of type calibCoeff
+      calibCoeff_t v;
+      const int N = dev.size();
+      for(int i=0;i<N;i++){
+         v.dev         = dev[i];
+	 v.pedestal    = ped[i]; 
+	 v.pedestalErr = pedErr[i]; 
+	 v.offset      = offset[i];
+	 v.offsetErr   = offsetErr[i];
+	 v.slope       = gain[i];
+	 v.slopeErr    = gainErr[i];
+         data.push_back(v);  
+      }
+
+      delete csv; 
+      return 0; 
+   }
+   //______________________________________________________________________________
    int LoadFittedOffsetGainData(const char *inpath,std::vector<calibCoeff_t> &data){
       // load fitted offset and slope (gain) data from BCM or Unser calibration analysis  
       // note: this is a component of a calibCoeff data type,
@@ -498,14 +538,16 @@ namespace bcm_util {
       return 0;
    }
    //______________________________________________________________________________
-   int CalculateStatsForBeamState(std::string beamState,std::vector<producedVariable_t> data,std::vector<producedVariable_t> &out,
-                         std::string LOG_PATH){
+   int CalculateStatsForBeamState(std::string beamState,std::vector<producedVariable_t> data,
+                                  std::vector<producedVariable_t> &out,double &MEAN,double &STDEV,
+                                  std::string LOG_PATH){
       // compute the stats averaged over all cycles per group for a given beam state 
       // - input
       //   - vector of beam-on and beam-off data (alternates between on and off data; also has a given group/beam current) 
       //   - LOG_PATH: print screen messages named LOG_PATH (if not NONE) 
       // - output
-      //   - vector of beam-off data, averaged over all cycles per group 
+      //   - vector of selected data, averaged over all cycles per group (index is group)  
+      //   - mean and stdev of all the selected data averaged over all cycles and group 
 
       char msg[200];
       producedVariable_t aPt;
@@ -602,6 +644,23 @@ namespace bcm_util {
       out.push_back(aPt); 
       sprintf(msg,"--> time = %.3lf, mean = %.3E, stdev = %.3E",aPt.time,aPt.mean,aPt.stdev);
       if(LOG_PATH.compare("NONE")!=0) util_df::LogMessage(LOG_PATH.c_str(),msg,'a');
+
+      // now do the weighted mean on ALL groups 
+      v.clear();
+      w.clear();
+      int NN = out.size();
+      for(int i=0;i<NN;i++){
+	 v.push_back(out[i].mean);
+	 argErr = out[i].stdev*out[i].stdev;  
+         if(argErr!=0){
+	    w.push_back(1./argErr); 
+         }else{
+	    w.push_back(1);
+         }
+      }
+
+      math_df::GetWeightedMean<double>(v,w,MEAN,err); 
+      STDEV = math_df::GetStandardDeviation<double>(v); 
 
       return 0;
    }

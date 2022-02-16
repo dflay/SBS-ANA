@@ -23,6 +23,16 @@ typedef struct calibCoeff {
       slope(0),slopeErr(0),
       runMin(-1),runMax(-1)
    {}
+   // useful functions 
+   void Print(){
+      std::cout << "----------------------------------------" << std::endl;
+      std::cout << "dev:        " << dev                 << std::endl;
+      std::cout << "run range:  " << runMin << ", " << runMax << std::endl;
+      std::cout << "pedestal:   " << Form("%.3lf ± %.3lf",pedestal,pedestalErr)  << std::endl;
+      std::cout << "offset:     " << Form("%.3lf ± %.3lf",offset,offsetErr)      << std::endl;
+      std::cout << "slope:      " << Form("%.3lf ± %.3lf",slope,slopeErr)        << std::endl;
+      std::cout << "----------------------------------------" << std::endl;
+   }
 } calibCoeff_t; 
 
 #endif 
