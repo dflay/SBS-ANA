@@ -148,13 +148,13 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
  
    double time=0,time_num=0,time_den=0; 
    double time103kHz=0,time103kHz_num=0,time103kHz_den=0; 
-   double unser_rate=0,unser_cnt=0;
-   double u1_rate=0,u1_cnt=0;
-   double unew_rate=0,unew_cnt=0;
-   double dnew_rate=0,dnew_cnt=0;
-   double d1_rate=0,d1_cnt=0;
-   double d3_rate=0,d3_cnt=0;
-   double d10_rate=0,d10_cnt=0;
+   double unser_rate=0,unser_cnt=0,unser_cur=0;
+   double u1_rate=0,u1_cnt=0,u1_cur=0;
+   double unew_rate=0,unew_cnt=0,unew_cur=0;
+   double dnew_rate=0,dnew_cnt=0,dnew_cur=0;
+   double d1_rate=0,d1_cnt=0,d1_cur=0;
+   double d3_rate=0,d3_cnt=0,d3_cur=0;
+   double d10_rate=0,d10_cnt=0,d10_cur=0;
 
    TChain *ch = nullptr; 
    ch = new TChain(treeName); 
@@ -170,18 +170,25 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
 
    aTree->SetBranchAddress(Form("%s.bcm.unser.cnt" ,arm.c_str()),&unser_cnt );
    aTree->SetBranchAddress(Form("%s.bcm.unser.rate",arm.c_str()),&unser_rate);
+   aTree->SetBranchAddress(Form("%s.bcm.unser.current",arm.c_str()),&unser_cur);
    aTree->SetBranchAddress(Form("%s.bcm.u1.cnt"    ,arm.c_str()),&u1_cnt    );
    aTree->SetBranchAddress(Form("%s.bcm.u1.rate"   ,arm.c_str()),&u1_rate   );
+   aTree->SetBranchAddress(Form("%s.bcm.u1.current",arm.c_str()),&u1_cur    );
    aTree->SetBranchAddress(Form("%s.bcm.unew.cnt"  ,arm.c_str()),&unew_cnt  );
    aTree->SetBranchAddress(Form("%s.bcm.unew.rate" ,arm.c_str()),&unew_rate );
+   aTree->SetBranchAddress(Form("%s.bcm.unew.current",arm.c_str()),&unew_cur );
    aTree->SetBranchAddress(Form("%s.bcm.d1.cnt"    ,arm.c_str()),&d1_cnt    );
    aTree->SetBranchAddress(Form("%s.bcm.d1.rate"   ,arm.c_str()),&d1_rate   );
+   aTree->SetBranchAddress(Form("%s.bcm.d1.current",arm.c_str()),&d1_cur    );
    aTree->SetBranchAddress(Form("%s.bcm.d3.cnt"    ,arm.c_str()),&d3_cnt    );
    aTree->SetBranchAddress(Form("%s.bcm.d3.rate"   ,arm.c_str()),&d3_rate   );
+   aTree->SetBranchAddress(Form("%s.bcm.d3.current",arm.c_str()),&d3_cur    );
    aTree->SetBranchAddress(Form("%s.bcm.d10.cnt"   ,arm.c_str()),&d10_cnt   );
    aTree->SetBranchAddress(Form("%s.bcm.d10.rate"  ,arm.c_str()),&d10_rate  );
+   aTree->SetBranchAddress(Form("%s.bcm.d10.current",arm.c_str()),&d10_cur  );
    aTree->SetBranchAddress(Form("%s.bcm.dnew.cnt"  ,arm.c_str()),&dnew_cnt  );
    aTree->SetBranchAddress(Form("%s.bcm.dnew.rate" ,arm.c_str()),&dnew_rate );
+   aTree->SetBranchAddress(Form("%s.bcm.dnew.current",arm.c_str()),&dnew_cur );
    if(arm.compare("Left")==0){
       aTree->SetBranchAddress(Form("Left.104kHz_CLK.cnt")       ,&time_num);
       aTree->SetBranchAddress(Form("Left.104kHz_CLK.rate")      ,&time_den);
@@ -229,7 +236,17 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
       pt.d10Rate     = d10_rate;  
       pt.d10Counts   = d10_cnt; 
       if(fCalculateCurrent){
+	 // use your own calibration coefficients
 	 ApplyCalibrationCoeff(pt);
+      }else{
+	 // use the values from the ROOT file
+	 pt.u1Current    = u1_cur;
+	 pt.unewCurrent  = unew_cur;
+	 pt.d1Current    = d1_cur;
+	 pt.d3Current    = d3_cur;
+	 pt.d10Current   = d10_cur;
+	 pt.dnewCurrent  = dnew_cur;
+	 pt.unserCurrent = unser_cur;
       }
       if(arm.compare("Left")==0){
 	 pt.time     = fLastTimeLeft + time; 
