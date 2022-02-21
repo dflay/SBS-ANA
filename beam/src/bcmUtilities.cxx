@@ -69,6 +69,48 @@ namespace bcm_util {
       return g; 
    }
    //______________________________________________________________________________
+   int GetCharge(std::string var,std::vector<scalerData_t> runData,charge_t &out){
+      // get the charge associated with the run
+
+      int N = runData.size();
+      double MICROAMPS = 1E-6; 
+      double timeStep=0,chargeSum=0,current=0;
+      double deltaTime = runData[N-1].time - runData[0].time;
+      std::vector<double> I;
+      // accumulate charge over the whole run for each variable  
+      for(int i=0;i<N;i++){
+	 if(i==0){
+	    timeStep = runData[1].time - runData[0].time;
+	 }else{
+	    timeStep = runData[i].time - runData[i-1].time;
+	 }
+	 current = runData[i].getValue(var)*MICROAMPS; // in A
+	 // if(i<10){
+	 //    std::cout << Form("event %d, timeStep = %.3lf sec",i,timeStep) << std::endl;
+	 // }
+	 chargeSum += timeStep*current;  
+         I.push_back(current);
+      }
+      // calculate (statistical) uncertainty 
+      double mean_i    = math_df::GetMean<double>(I); 
+      double stdev_i   = math_df::GetStandardDeviation<double>(I); 
+      double chargeErr = GetChargeError(chargeSum,mean_i,stdev_i,deltaTime,0);   
+      // save results
+      out.runNumber = runData[0].runNumber; 
+      out.totalTime = deltaTime; 
+      out.value     = chargeSum;
+      out.error     = chargeErr;
+      return 0; 
+   }
+   //______________________________________________________________________________
+   double GetChargeError(double Q,double I, double dI,double t,double dt){
+      double T1=0,T2=0;
+      if(I!=0) T1 = TMath::Power(dI/I,2.);
+      if(t!=0) T2 = TMath::Power(dt/t,2.);
+      double dQ = Q*TMath::Sqrt( T1 + T2 );
+      return dQ;
+   }
+   //______________________________________________________________________________
    int GetStats_byRun(std::string var,std::vector<scalerData_t> data,
                       std::vector<double> &RUN,std::vector<double> &MEAN,std::vector<double> &STDEV){
       // get stats of var vs run number  

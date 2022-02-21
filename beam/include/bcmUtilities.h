@@ -40,6 +40,9 @@ namespace bcm_util {
    int SubtractBaseline(std::vector<producedVariable_t> on,std::vector<producedVariable_t> off, 
                         std::vector<producedVariable_t> &diff,bool isDebug=false);
 
+   int GetCharge(std::string var,std::vector<scalerData_t> runData,charge_t &out);
+   double GetChargeError(double Q,double I, double dI,double t,double dt); 
+
    int GetStats_byRun(std::string var,std::vector<scalerData_t> data,
                       std::vector<double> &RUN,std::vector<double> &MEAN,std::vector<double> &STDEV); 
    int GetStats_byRun_epics(std::string var,std::vector<epicsData_t> data,

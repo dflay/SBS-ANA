@@ -19,8 +19,6 @@
 #include "./src/bcmUtilities.cxx"
 #include "./src/cutUtilities.cxx"
 
-#define MICROAMPS 1E-6
-
 TString GetTitle(std::vector<int> run); 
 
 int GetStats(std::vector<std::string> var,std::vector<scalerData_t> data,
@@ -406,7 +404,8 @@ int GetCharge(std::string var,std::vector<scalerData_t> allData,std::vector<doub
 
    int M=0;
    const int NT = allData.size(); 
-   const int NR = run.size(); 
+   const int NR = run.size();
+   double MICROAMPS = 1E-6;  
    double timeStep=0,timeStep103=0,deltaTime=0,chargeSum=0,chargeSum103=0;
    std::vector<scalerData_t> runData;  
    for(int i=0;i<NR;i++){
@@ -466,6 +465,7 @@ int GetCharge(std::vector<std::string> var,BCMManager *mgr,
 
    const int NV = var.size();
    double chargeSum[NV],chargeSum103[NV];  
+   double MICROAMPS = 1E-6;  
 
    int M=0;
    double startTime=0,endTime=0,deltaTime=0;
