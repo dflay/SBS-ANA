@@ -11,6 +11,7 @@
 #include <sys/types.h>
 
 #include "codaRun.h"
+#include "producedVariable.h"
 
 namespace util_df {
    unsigned long int GetUTCTimeStampFromString(std::string timeStamp,bool isDST); 
@@ -21,7 +22,7 @@ namespace util_df {
    int LoadRunList(const char *inpath,const char *rfPrefix,std::vector<codaRun_t> &runList); 
    int LoadBCMData(std::vector<codaRun_t> runList,BCMManager *mgr); 
    int SplitString(const char delim,const std::string myStr,std::vector<std::string> &out); 
-   int GetROOTFileMetaData(const char *rfDirPath,int run,std::vector<int> &data,bool isDebug=false); 
+   int GetROOTFileMetaData(const char *rfDirPath,int run,std::vector<int> &data,bool isDebug=false);
 } 
 
 #endif 

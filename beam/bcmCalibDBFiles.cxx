@@ -25,6 +25,8 @@
 #include "./src/Utilities.cxx"
 #include "./src/bcmUtilities.cxx"
 
+int GetStats_pv(std::vector<producedVariable_t> data,double &mean,double &err,double &stdev); 
+
 int bcmCalibDBFiles(const char *confPath){
    
    int rc=0;
@@ -45,15 +47,27 @@ int bcmCalibDBFiles(const char *confPath){
    sprintf(inpath,"%s/result.csv",prefix);  
    rc = bcm_util::LoadCalibrationCoefficients(inpath,cc); 
 
-   // also get the Unser 
-   rc = bcm_util::LoadCalibrationCoefficients(unser_path.c_str(),cc); 
+   // also get the Unser
+   // precision current calibration 
+   rc = bcm_util::LoadCalibrationCoefficients(unser_path.c_str(),cc);
+   const int NCC = cc.size();  
 
-   char dev_lmsg[200],dev_smsg[200]; 
+   // unser pedestal data from this analysis 
+   sprintf(inpath,"%s/unser_ped.csv",prefix);
+   std::vector<producedVariable_t> uped; 
+   rc = bcm_util::LoadProducedVariables(inpath,uped);
+   // averaged pedestal 
+   double mean=0,err=0,stdev=0;
+   GetStats_pv(uped,mean,err,stdev);
+   // set unser pedestal 
+   cc[NCC-1].pedestal    = mean; 
+   cc[NCC-1].pedestalErr = stdev; 
+
+   char dev_msg[200]; 
    char gain_msg[200],offs_msg[200],satq_msg[200];
    char sato_msg[200],curt_msg[200],curi_msg[200]; 
 
    double totOffset=0,totOffsetErr=0;
-   const int NCC = cc.size();
    for(int i=0;i<NCC;i++){
       // DB expects a TOTAL offset -- that is pedestal + fitted offset
       // we construct it here 
@@ -62,42 +76,29 @@ int bcmCalibDBFiles(const char *confPath){
       // sprintf(msg,"%s: pedestal = %.3lf, offset = %.3lf, total = %.3lf",cc[i].dev.c_str(),cc[i].pedestal,cc[i].offset,totOffset); 
       // util_df::LogMessage(log_path,msg,'a'); 
       if(i==0){
-	 sprintf(dev_lmsg,"BCM_Names                   = Left.bcm.%s.current",cc[i].dev.c_str()); 
-	 sprintf(dev_smsg,"BCM_Names                   = sbs.bcm.%s.current",cc[i].dev.c_str()); 
+	 sprintf(dev_msg ,"BCM_Names                   = %s",cc[i].dev.c_str()); 
 	 sprintf(gain_msg,"BCM_Gain                    = %.3lf",cc[i].slope); 
 	 sprintf(offs_msg,"BCM_Offset                  = %.3lf",totOffset); 
 	 sprintf(satq_msg,"BCM_SatQuadratic            = %.3lf",0.); 
 	 sprintf(sato_msg,"BCM_SatOffset               = %.3lf",0.); 
 	 sprintf(curt_msg,"BCM_Current_threshold       = %.3lf",0.); 
-	 sprintf(curi_msg,"BCM_Current_threshold_index = %.3lf",0.); 
+	 sprintf(curi_msg,"BCM_Current_threshold_index = %d"   ,0 ); 
       }else{
-	 sprintf(dev_lmsg ,"%s Left.bcm.%s.current"  ,dev_lmsg ,cc[i].dev.c_str()); 
-	 sprintf(dev_smsg ,"%s sbs.bcm.%s.current"   ,dev_smsg ,cc[i].dev.c_str()); 
+	 sprintf(dev_msg ,"%s %s"   ,dev_msg ,cc[i].dev.c_str()); 
 	 sprintf(gain_msg,"%s %.3lf",gain_msg,cc[i].slope); 
 	 sprintf(offs_msg,"%s %.3lf",offs_msg,totOffset); 
 	 sprintf(satq_msg,"%s %.3lf",satq_msg,0.); 
 	 sprintf(sato_msg,"%s %.3lf",sato_msg,0.); 
 	 sprintf(curt_msg,"%s %.3lf",curt_msg,0.); 
-	 sprintf(curi_msg,"%s %.3lf",curi_msg,0.); 
+	 sprintf(curi_msg,"%s %d"   ,curi_msg,0 ); 
       }
-      // // make LHRS file
-      // sprintf(varStr,"LeftBCM.%s.offset",cc[i].dev.c_str()); 
-      // sprintf(msg,"%s = %.3lf",varStr,totOffset); 
-      // util_df::LogMessage(db_path_lhrs,msg,'a');
-      // sprintf(varStr,"LeftBCM.%s.gain",cc[i].dev.c_str()); 
-      // sprintf(msg,"%s = %.3lf"  ,varStr,cc[i].slope); 
-      // util_df::LogMessage(db_path_lhrs,msg,'a');
-      // // make SBS file
-      // sprintf(varStr,"sbsBCM.%s.offset",cc[i].dev.c_str()); 
-      // sprintf(msg,"%s = %.3lf",varStr,totOffset); 
-      // util_df::LogMessage(db_path_sbs,msg,'a');
-      // sprintf(varStr,"sbsBCM.%s.gain",cc[i].dev.c_str()); 
-      // sprintf(msg,"%s = %.3lf"  ,varStr,cc[i].slope); 
-      // util_df::LogMessage(db_path_sbs,msg,'a');
    }
 
-   std::string dev_lmsg_str = dev_lmsg;  
-   std::string dev_smsg_str = dev_smsg;  
+   char nbcm_msg[200]; 
+   sprintf(nbcm_msg,"NumBCMs                     = %d",NCC); 
+
+   std::string nbcm_msg_str = nbcm_msg;
+   std::string dev_msg_str  = dev_msg;  
    std::string gain_msg_str = gain_msg;
    std::string offs_msg_str = offs_msg;
    std::string satq_msg_str = satq_msg;
@@ -105,7 +106,9 @@ int bcmCalibDBFiles(const char *confPath){
    std::string curt_msg_str = curt_msg;     
    std::string curi_msg_str = curi_msg;
 
-   std::vector<std::string> MSG; 
+   std::vector<std::string> MSG;
+   MSG.push_back(nbcm_msg_str);  
+   MSG.push_back(dev_msg_str); 
    MSG.push_back(gain_msg_str); 
    MSG.push_back(offs_msg_str); 
    MSG.push_back(satq_msg_str); 
@@ -113,20 +116,31 @@ int bcmCalibDBFiles(const char *confPath){
    MSG.push_back(curt_msg_str); 
    MSG.push_back(curi_msg_str); 
 
-   // now print to file
-   std::string lhrs,sbs;
-   lhrs = "LeftBCM." + dev_lmsg_str;
-   sbs  = "sbsBCM."  + dev_lmsg_str;
-   util_df::LogMessage(db_path_lhrs,lhrs.c_str(),'a'); 
-   util_df::LogMessage(db_path_sbs ,sbs.c_str() ,'a'); 
-
    const int NS = MSG.size();
    for(int i=0;i<NS;i++){
-      lhrs = "LeftBCM." + MSG[i];
-      sbs  = "sbsBCM."  + MSG[i];
-      util_df::LogMessage(db_path_lhrs,lhrs.c_str(),'a'); 
-      util_df::LogMessage(db_path_sbs ,sbs.c_str() ,'a'); 
+      util_df::LogMessage(db_path_lhrs,MSG[i].c_str(),'a'); 
+      util_df::LogMessage(db_path_sbs ,MSG[i].c_str(),'a'); 
    }
 
+   return 0;
+}
+//______________________________________________________________________________
+int GetStats_pv(std::vector<producedVariable_t> data,double &mean,double &err,double &stdev){
+   // get the mean, std-err of mean, stdev on a vector of producedVariable data types
+   double argErr=0;
+   const int N = data.size();
+   std::vector<double> v,w; 
+   for(int i=0;i<N;i++){
+      argErr = data[i].stdev; 
+      if( argErr!=0 ){
+	 w.push_back( 1./(argErr*argErr) ); 
+      }else{
+	 w.push_back(1); 
+      }
+      v.push_back(data[i].mean);
+   } 
+   // calculate stats
+   math_df::GetWeightedMean<double>(v,w,mean,err); 
+   stdev = math_df::GetStandardDeviation<double>(v); 
    return 0;
 }

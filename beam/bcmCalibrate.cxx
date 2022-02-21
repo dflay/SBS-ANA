@@ -47,7 +47,7 @@ int bcmCalibrate(const char *confPath){
    delete jmgr;
 
    // set up output directory paths
-   char data_dir[200],plot_dir[200],log_path[200],plt_path[200];
+   char data_dir[200],plot_dir[200],log_path[200],plt_path[200],outpath[200];
    sprintf(data_dir,"./output/%s"                  ,tag.c_str());
    sprintf(log_path,"./output/%s/log/calibrate.txt",tag.c_str()); 
    sprintf(plot_dir,"./output/%s/plots"            ,tag.c_str());
@@ -63,6 +63,13 @@ int bcmCalibrate(const char *confPath){
    std::vector<producedVariable_t> unser;
    rc = bcm_util::LoadProducedVariables(unserPath,unser);
    if(rc!=0) return 1;
+
+   // compute pedestal rates
+   double mean_ped=0,stdev_ped=0;
+   std::vector<producedVariable_t> unser_off;
+   bcm_util::CalculateStatsForBeamState("off",unser,unser_off,mean_ped,stdev_ped,LOG_PATH);
+   sprintf(outpath,"%s/unser_ped.csv",data_dir);
+   bcm_util::WriteToFile(outpath,unser_off);  
 
    // compute pedestal-subtracted Unser rates and convert to current
    std::vector<producedVariable_t> unser_ps;
@@ -86,7 +93,7 @@ int bcmCalibrate(const char *confPath){
  
    // set up fit parameters
    const int npar=2;
-   double mean_ped=0,stdev_ped=0,offset=0,offsetErr=0,slope=0,slopeErr=0; 
+   double offset=0,offsetErr=0,slope=0,slopeErr=0; 
 
    // calibration coefficient output 
    calibCoeff_t ccPt; 
@@ -98,7 +105,7 @@ int bcmCalibrate(const char *confPath){
 
    TString Title,xAxisTitle,yAxisTitle,fitName;
 
-   char inpath[200],outpath[200],msg[200]; 
+   char inpath[200],msg[200]; 
    
    std::vector<producedVariable_t> bcm,bcm_ps,bcm_off; 
    for(int i=0;i<N;i++){
