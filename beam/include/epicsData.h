@@ -7,6 +7,7 @@ typedef struct epicsData {
    std::string info;             // user info 
    double time;                  // EPICS time stamp        
    double IBC1H04CRCUR2;         // IBC1H04 beam current [uA] 
+   double halla_p;               // beam momentum [MeV] 
    double hac_bcm_average;       // average of U1 and D1 BCM currents [uA]     
    double hac_bcm_dvm1_read;     // U1 BCM digital voltmeter readout voltage [V] 
    double hac_bcm_dvm2_read;     // D1 BCM digital voltmeter readout voltage [V]    
@@ -21,7 +22,7 @@ typedef struct epicsData {
    int runNumber;                // run number 
    // constructor 
    epicsData():
-      info("NONE"),time(0),IBC1H04CRCUR2(0),
+      info("NONE"),time(0),IBC1H04CRCUR2(0),halla_p(0),
       hac_bcm_average(0),hac_bcm_dvm1_read(0),hac_bcm_dvm2_read(0),
       hac_bcm_dvm1_current(0),hac_bcm_dvm2_current(0),
       IPM1H04A_XPOS(0),IPM1H04A_YPOS(0),
@@ -35,6 +36,7 @@ typedef struct epicsData {
       if(varName.compare("run")==0)                  val = runNumber;
       if(varName.compare("runEvent")==0)             val = runEvent;
       if(varName.compare("time")==0)                 val = time;
+      if(varName.compare("halla_p")==0)              val = halla_p;
       if(varName.compare("IPM1H04A.XPOS")==0)        val = IPM1H04A_XPOS;
       if(varName.compare("IPM1H04A.YPOS")==0)        val = IPM1H04A_YPOS;
       if(varName.compare("IPM1H04E.XPOS")==0)        val = IPM1H04E_XPOS;
@@ -53,6 +55,7 @@ typedef struct epicsData {
 	        << Form("run %05d, "                    ,runNumber)
                 << Form("run event %d, "                ,runEvent)      
 	        << Form("time = %.3lf, "                ,time)
+	        << Form("halla_p = %.3lf, "             ,halla_p)
 	        << Form("IPM1H04A_XPOS = %.3lf, "       ,IPM1H04A_XPOS)
 	        << Form("IPM1H04A_YPOS = %.3lf, "       ,IPM1H04A_YPOS)
 	        << Form("IPM1H04E_XPOS = %.3lf, "       ,IPM1H04E_XPOS)

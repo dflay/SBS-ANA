@@ -65,7 +65,12 @@ int BCMManager::LoadFile(const char *filePath,int runNumber){
    int notFound=0;
    int NR=fRunList.size(); 
    if(rc_sbs==0){
-      std::cout << Form("[BCMManager::LoadFile]: Loaded run %d, recorded on %s (%lu)",runNumber,fTimeStamp.c_str(),fUTCTimeStamp) << std::endl;
+      std::cout << Form("-----------------------------------------") << std::endl;
+      std::cout << Form("[BCMManager::LoadFile]: Load successful: ") << std::endl;
+      std::cout << Form("Run:  %d"      ,runNumber) << std::endl;
+      std::cout << Form("Date: %s (%lu)",fTimeStamp.c_str(),fUTCTimeStamp) << std::endl;
+      std::cout << Form("-----------------------------------------") << std::endl;
+      // std::cout << Form("[BCMManager::LoadFile]: Loaded run %d, recorded on %s (%lu)",runNumber,fTimeStamp.c_str(),fUTCTimeStamp) << std::endl;
       for(int i=0;i<NR;i++){
 	 if(runNumber!=fRunList[i]) notFound += 1;
       }
@@ -105,7 +110,7 @@ int BCMManager::GetTimeStamp(TFile *f,std::string &timeStamp,unsigned long &utc)
    // now compute the UTC time stamp 
    struct tm timeinfo = {0};
    timeinfo.tm_year = year-1900;  // years since 1900 
-   timeinfo.tm_mon  = month-1;     // months since january (0--11)  
+   timeinfo.tm_mon  = month-1;    // months since january (0--11)  
    timeinfo.tm_mday = day;
    timeinfo.tm_hour = hour;
    timeinfo.tm_min  = min;
@@ -145,6 +150,9 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
    std::string name = treeName;
    if(name.compare("TSLeft")==0) arm = "Left"; 
    if(name.compare("TSsbs")==0)  arm = "sbs"; 
+
+   Long64_t trigEvt=0;
+   double trigEvt2; 
  
    double time=0,time_num=0,time_den=0; 
    double time103kHz=0,time103kHz_num=0,time103kHz_den=0; 
@@ -168,6 +176,8 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
    TTree *aTree = ch->GetTree();
    if(aTree==nullptr) return 1; 
 
+   aTree->SetBranchAddress("evnum"            ,&trigEvt );
+   aTree->SetBranchAddress("evNumber"         ,&trigEvt2 );
    aTree->SetBranchAddress(Form("%s.bcm.unser.cnt" ,arm.c_str()),&unser_cnt );
    aTree->SetBranchAddress(Form("%s.bcm.unser.rate",arm.c_str()),&unser_rate);
    aTree->SetBranchAddress(Form("%s.bcm.unser.current",arm.c_str()),&unser_cur);
@@ -215,26 +225,28 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
       }else{
 	 time103kHz = 0;
       }
-      pt.time_num    = time_num;  
-      pt.time_den    = time_den;  
+      pt.triggerEvent   = trigEvt;
+      pt.triggerEvent2  = (signed long long)trigEvt2;
+      pt.time_num       = time_num;  
+      pt.time_den       = time_den;  
       pt.time103kHz_num = time103kHz_num;  
       pt.time103kHz_den = time103kHz_den;  
-      pt.arm         = arm; 
-      pt.runNumber   = runNumber; 
-      pt.unserRate   = unser_rate;  
-      pt.unserCounts = unser_cnt;  
-      pt.u1Rate      = u1_rate;  
-      pt.u1Counts    = u1_cnt;  
-      pt.unewRate    = unew_rate;  
-      pt.unewCounts  = unew_cnt;  
-      pt.dnewRate    = dnew_rate;  
-      pt.dnewCounts  = dnew_cnt;  
-      pt.d1Rate      = d1_rate;  
-      pt.d1Counts    = d1_cnt;  
-      pt.d3Rate      = d3_rate;  
-      pt.d3Counts    = d3_cnt;  
-      pt.d10Rate     = d10_rate;  
-      pt.d10Counts   = d10_cnt; 
+      pt.arm            = arm; 
+      pt.runNumber      = runNumber; 
+      pt.unserRate      = unser_rate;  
+      pt.unserCounts    = unser_cnt;  
+      pt.u1Rate         = u1_rate;  
+      pt.u1Counts       = u1_cnt;  
+      pt.unewRate       = unew_rate;  
+      pt.unewCounts     = unew_cnt;  
+      pt.dnewRate       = dnew_rate;  
+      pt.dnewCounts     = dnew_cnt;  
+      pt.d1Rate         = d1_rate;  
+      pt.d1Counts       = d1_cnt;  
+      pt.d3Rate         = d3_rate;  
+      pt.d3Counts       = d3_cnt;  
+      pt.d10Rate        = d10_rate;  
+      pt.d10Counts      = d10_cnt; 
       if(fCalculateCurrent){
 	 // use your own calibration coefficients
 	 ApplyCalibrationCoeff(pt);
@@ -288,8 +300,8 @@ int BCMManager::LoadDataFromTree(const char *filePath,const char *treeName,int r
       lastTime = fLastTimeLeft; 
    }else if(arm.compare("SBS")==0){
       if( IsBad(fSBS[NN-1].time) ){
-	 std::cout << "[BCMManager::LoadDataFromTree]: WARNING! arm = " << arm << ", bad last time! Setting to zero." << std::endl;
          fSBS[NN-1].time = 0; 
+	 std::cout << "[BCMManager::LoadDataFromTree]: WARNING! arm = " << arm << ", bad last time! Setting to zero." << std::endl;
       } 
       fLastTimeSBS  = fSBS[NN-1].time;
       lastTime      = fLastTimeSBS; 
@@ -307,7 +319,7 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
 
    if(fIsDebug) std::cout << "[BCMManager::LoadEPICSDataFromTree]: Loading data from tree: E" << std::endl; 
 
-   double epicsTime=0,IBC1H04CRCUR2=0,hac_bcm_average=0;
+   double epicsTime=0,IBC1H04CRCUR2=0,hac_bcm_average=0,halla_p=0;
    double IPM1H04A_XPOS=0,IPM1H04A_YPOS=0; 
    double IPM1H04E_XPOS=0,IPM1H04E_YPOS=0;
    double hac_bcm_dvm1_read=0,hac_bcm_dvm2_read=0; 
@@ -327,6 +339,7 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
       return 1;
    }
 
+   aTree->SetBranchAddress("halla_p"             ,&halla_p             ); 
    aTree->SetBranchAddress("IPM1H04A.XPOS"       ,&IPM1H04A_XPOS       );
    aTree->SetBranchAddress("IPM1H04A.YPOS"       ,&IPM1H04A_YPOS       );
    aTree->SetBranchAddress("IPM1H04E.XPOS"       ,&IPM1H04E_XPOS       );
@@ -350,6 +363,7 @@ int BCMManager::LoadEPICSDataFromTree(const char *filePath,int runNumber){
       }else{
 	 pt.runEvent = i; 
       }
+      pt.halla_p              = halla_p;
       pt.hac_bcm_average      = hac_bcm_average; 
       pt.hac_bcm_dvm1_read    = hac_bcm_dvm1_read; 
       pt.hac_bcm_dvm2_read    = hac_bcm_dvm2_read; 

@@ -10,12 +10,19 @@
 #include "TPad.h"
 #include "TLine.h"
 
+#include "./include/scalerData.h"
+#include "./include/epicsData.h"
+#include "./include/producedVariable.h"
+#include "./include/calibCoeff.h"
 #include "./include/codaRun.h"
+#include "./src/ABA.cxx"
 #include "./src/Graph.cxx"
+#include "./src/CSVManager.cxx"
 #include "./src/JSONManager.cxx"
+#include "./src/BCMManager.cxx"
+#include "./src/BeamManager.cxx"
 #include "./src/Utilities.cxx"
 #include "./src/bcmUtilities.cxx"
-#include "./src/BeamManager.cxx"
 
 int beamPlot(const char *confPath){
 
@@ -76,8 +83,8 @@ int beamPlot(const char *confPath){
 
    // 2D raster plot, BPM plot
    int NBin2D = 4000;  
-   TH2F *r2D_1 = mgr->GetTH2F("SBSrb","Raster.rawcur.x" ,"Raster.rawcur.y" ,NBin2D,0,95E+3,NBin2D,0,95E+3);
-   TH2F *r2D_2 = mgr->GetTH2F("SBSrb","Raster2.rawcur.x","Raster2.rawcur.y",NBin2D,0,95E+3,NBin2D,0,95E+3);
+   TH2F *r2D_1 = mgr->GetTH2F("SBSrb","Raster1.rawcur.x"   ,"Raster1.rawcur.y" ,NBin2D,0,95E+3,NBin2D,0,95E+3);
+   TH2F *r2D_2 = mgr->GetTH2F("SBSrb","Raster2.rawcur.x"   ,"Raster2.rawcur.y",NBin2D,0,95E+3,NBin2D,0,95E+3);
    TH2F *p2D_A = mgr->GetTH2F("SBSrb","BPMA.x"  ,"BPMA.y"  ,NBin2D,-10E-3,10E-3,NBin2D,-10E-3,10E-3);
    TH2F *p2D_B = mgr->GetTH2F("SBSrb","BPMB.x"  ,"BPMB.y"  ,NBin2D,-10E-3,10E-3,NBin2D,-10E-3,10E-3);
    TH2F *tgt   = mgr->GetTH2F("SBSrb","target.x","target.y",NBin2D,-4,4,NBin2D,-4,4);

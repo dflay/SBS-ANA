@@ -28,7 +28,7 @@ print("Reading data from file: {0}".format(inpath) )
 f = open(inpath,"r")
 
 lines = f.readlines()
-print("NL = {0}".format(len(lines)))
+# print("NL = {0}".format(len(lines)))
 
 # find the run key 
 runKey = util_df.getRunKey(lines[0])
@@ -37,7 +37,7 @@ entries = []
 
 # default arguments to the replay script
 firstEvent = 0 
-lastEvent  = -1 
+lastEvent  = 10000 # 100000
 nSegments  = 700 
 
 # files to save status

@@ -9,6 +9,7 @@
 #include <vector> 
 
 #include "cut.h"
+#include "charge.h"
 #include "codaRun.h"
 #include "calibCoeff.h"
 #include "scalerData.h"
